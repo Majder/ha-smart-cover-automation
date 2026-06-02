@@ -319,6 +319,24 @@ class TestOptionsFlowStep2:
         )
         assert field_key.description == {"suggested_value": "75x"}
 
+    def test_validate_step_2_input_skips_empty_tolerance_values(self) -> None:
+        """Empty tolerance values should be silently skipped, not produce errors.
+
+        Covers the 'continue' branch (line 1057) in _validate_step_2_input when
+        _is_empty_value returns True for a field in the tolerance section.
+        """
+
+        user_input = {
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
+                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "",
+                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": None,
+            },
+        }
+
+        errors = OptionsFlowHandler._validate_step_2_input(user_input)
+
+        assert errors == {}
+
     def test_build_section_cover_settings_with_sun_azimuth_tolerance(self) -> None:
         """Test _build_section_cover_settings handles per-cover sun azimuth thresholds."""
 
@@ -1078,6 +1096,43 @@ class TestOptionsFlowHelperMethods:
         assert const.NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT in merged
         assert f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}" not in merged
         assert f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_NIGHT}" in merged
+
+    def test_cleanup_external_tilt_value_keys_keeps_day_value_when_tilt_mode_is_external(self) -> None:
+        """Global external tilt day value must be preserved when tilt mode day is still EXTERNAL.
+
+        Covers the false branch of 'if TILT_MODE_DAY != EXTERNAL' (branch 1096->1099).
+        """
+
+        merged = {
+            ConfKeys.TILT_MODE_DAY.value: const.TiltMode.EXTERNAL,
+            ConfKeys.TILT_MODE_NIGHT.value: const.TiltMode.EXTERNAL,
+            const.NUMBER_KEY_TILT_EXTERNAL_VALUE_DAY: 40,
+            const.NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT: 15,
+        }
+
+        OptionsFlowHandler._cleanup_external_tilt_value_keys(merged, [MOCK_COVER_ENTITY_ID])
+
+        assert const.NUMBER_KEY_TILT_EXTERNAL_VALUE_DAY in merged
+        assert const.NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT in merged
+
+    def test_cleanup_external_tilt_value_keys_removes_stale_cover_value_keys(self) -> None:
+        """Tilt external value keys for removed covers must be purged from merged options.
+
+        Covers line 1119: merged.pop(key, None) when cover_entity not in valid_covers.
+        """
+
+        stale_cover = "cover.old_bedroom"
+        merged = {
+            ConfKeys.TILT_MODE_DAY.value: "open",
+            ConfKeys.TILT_MODE_NIGHT.value: "open",
+            f"{stale_cover}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}": 55,
+            f"{stale_cover}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_NIGHT}": 30,
+        }
+
+        OptionsFlowHandler._cleanup_external_tilt_value_keys(merged, [MOCK_COVER_ENTITY_ID])
+
+        assert f"{stale_cover}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}" not in merged
+        assert f"{stale_cover}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_NIGHT}" not in merged
 
     def test_cleanup_external_morning_opening_keys_keeps_value_in_external_mode(self) -> None:
         """External morning opening time should be preserved while external mode is active."""

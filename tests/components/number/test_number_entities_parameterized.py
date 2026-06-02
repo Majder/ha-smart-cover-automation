@@ -23,6 +23,7 @@ from custom_components.smart_cover_automation.const import (
     NUMBER_KEY_MANUAL_OVERRIDE_DURATION,
     NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_END,
     NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_START,
+    NUMBER_KEY_SUN_ELEVATION_MAX,
     NUMBER_KEY_SUN_ELEVATION_THRESHOLD,
 )
 from custom_components.smart_cover_automation.coordinator import DataUpdateCoordinator
@@ -33,6 +34,7 @@ from custom_components.smart_cover_automation.number import (
     ManualOverrideDurationNumber,
     SunAzimuthToleranceEndNumber,
     SunAzimuthToleranceStartNumber,
+    SunElevationMaxNumber,
     SunElevationThresholdNumber,
     async_setup_entry,
 )
@@ -130,6 +132,27 @@ ENTITY_CONFIGS = [
         "has_conversion": False,
     },
     {
+        "id": "sun_elevation_max",
+        "class": SunElevationMaxNumber,
+        "key": NUMBER_KEY_SUN_ELEVATION_MAX,
+        "config_key": ConfKeys.SUN_ELEVATION_MAX.value,
+        "translation_key": NUMBER_KEY_SUN_ELEVATION_MAX,
+        "icon": "mdi:sun-angle",
+        "entity_category": EntityCategory.CONFIG,
+        "device_class": None,
+        "min_value": 0,
+        "max_value": 90,
+        "step": 1,
+        "mode": NumberMode.BOX,
+        "unit": "°",
+        "default_value": 90.0,
+        "test_values": [0, 10, 30, 45, 60, 90],
+        "boundary_min": 0,
+        "boundary_max": 90,
+        "entity_index": 4,
+        "has_conversion": False,
+    },
+    {
         "id": "daily_max_temperature_threshold",
         "class": DailyMaxTemperatureThresholdNumber,
         "key": NUMBER_KEY_DAILY_MAX_TEMPERATURE_THRESHOLD,
@@ -147,7 +170,7 @@ ENTITY_CONFIGS = [
         "test_values": [-100.0, -10.0, 0.0, 24.0, 50.0, 100.0],
         "boundary_min": -100.0,
         "boundary_max": 100.0,
-        "entity_index": 4,
+        "entity_index": 5,
         "has_conversion": False,
     },
     {
@@ -168,7 +191,7 @@ ENTITY_CONFIGS = [
         "test_values": [-100.0, -10.0, 0.0, 13.0, 50.0, 100.0],
         "boundary_min": -100.0,
         "boundary_max": 100.0,
-        "entity_index": 5,
+        "entity_index": 6,
         "has_conversion": False,
     },
 ]

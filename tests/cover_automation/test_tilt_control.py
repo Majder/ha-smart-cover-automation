@@ -50,6 +50,7 @@ def mock_resolved_config():
     resolved.covers_min_closure = 100
     resolved.evening_closure_max_closure = 0
     resolved.sun_elevation_threshold = 10.0
+    resolved.sun_elevation_max = 90
     resolved.sun_azimuth_tolerance_start = 90.0
     resolved.sun_azimuth_tolerance_end = 90.0
     resolved.manual_override_duration = 3600

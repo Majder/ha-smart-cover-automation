@@ -30,13 +30,13 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Step 2 of 6",
-                "description": "Configure the **azimuth** (direction) for each cover. You can also add optional per-cover **sun azimuth start/end** values that override the global sun-hit window settings configurable on the device page of the integration instance.\n\n(0°=North, 90°=East, 180°=South, 270°=West)",
+                "description": "Configure the **azimuth** (direction) for each cover.\n\nYou can also set optional per-cover **sun azimuth start/end** values. These are **absolute sun azimuth positions** (0–359°) that define when the sun hits a specific window: the cover darkens once the sun enters the start azimuth and reopens once it leaves the end azimuth. Leave both fields empty to use the global angle-tolerance setting instead.\n\n(0°=North, 90°=East, 180°=South, 270°=West)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Cover azimuth (required)"
                     },
                     "section_sun_azimuth_tolerance": {
-                        "name": "Sun azimuth window (optional)"
+                        "name": "Sun azimuth window — absolute positions (optional)"
                     }
                 }
             },
@@ -270,13 +270,16 @@
                 "name": "Sun azimuth tolerance"
             },
             "sun_azimuth_tolerance_start": {
-                "name": "Sun azimuth: start"
+                "name": "Sun azimuth: tolerance (entering)"
             },
             "sun_azimuth_tolerance_end": {
-                "name": "Sun azimuth: end"
+                "name": "Sun azimuth: tolerance (leaving)"
             },
             "sun_elevation_threshold": {
                 "name": "Minimum sun elevation"
+            },
+            "sun_elevation_max": {
+                "name": "Maximum sun elevation (overhang)"
             },
             "tilt_external_value_day": {
                 "name": "Tilt angle: external control (day)"

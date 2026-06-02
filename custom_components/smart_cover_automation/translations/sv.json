@@ -30,13 +30,13 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Steg 2 av 6",
-                "description": "Konfigurera **azimut** (riktning) för varje persienn. Du kan också lägga till valfria värden för **tolerans för solens azimut** per persienn som åsidosätter den globala inställningen för tolerans för solens azimut, som kan konfigureras på enhetssidan för denna integrationsinstans.\n\n(0°=Nord, 90°=Öst, 180°=Syd, 270°=Väst)",
+                "description": "Konfigurera **azimut** (riktning) för varje persienn.\n\nDu kan också ange valfria **absoluta solazimutpositioner** (start/slut) per persienn, som definierar när solen träffar ett specifikt fönster: persiennen mörkläggs när solen når startazimut och öppnar sig när solen passerar slutazimut. Lämna båda fält tomma för att istället använda den globala vinkeltoleransen.\n\n(0°=Nord, 90°=Öst, 180°=Syd, 270°=Väst)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Persiennens azimut (obligatoriskt)"
                     },
                     "section_sun_azimuth_tolerance": {
-                        "name": "Tolerans för solens azimut (valfritt)"
+                        "name": "Solazimutfönster — absoluta positioner (valfritt)"
                     }
                 }
             },
@@ -271,6 +271,9 @@
             },
             "sun_elevation_threshold": {
                 "name": "Minsta solhöjd"
+            },
+            "sun_elevation_max": {
+                "name": "Maximal solhöjd (takutsång)"
             },
             "tilt_external_value_day": {
                 "name": "Lamellvinkel: extern styrning (dag)"

@@ -221,6 +221,7 @@ NUMBER_KEY_DAILY_MIN_TEMPERATURE_THRESHOLD: Final[str] = (
     "daily_min_temperature_threshold"  # Key for the daily min temperature threshold number entity
 )
 NUMBER_KEY_SUN_ELEVATION_THRESHOLD: Final[str] = "sun_elevation_threshold"  # Key for the sun elevation threshold number entity
+NUMBER_KEY_SUN_ELEVATION_MAX: Final[str] = "sun_elevation_max"  # Key for the sun elevation maximum (overhang) number entity
 
 # Options flow translation keys
 ERROR_INVALID_COVER: Final[str] = "invalid_cover"

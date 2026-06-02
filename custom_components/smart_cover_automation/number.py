@@ -30,6 +30,7 @@ from .const import (
     NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_END,
     NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_START,
     NUMBER_KEY_SUN_ELEVATION_THRESHOLD,
+    NUMBER_KEY_SUN_ELEVATION_MAX,
     NUMBER_KEY_TILT_EXTERNAL_VALUE_DAY,
     NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT,
     TiltMode,
@@ -72,6 +73,7 @@ async def async_setup_entry(
         SunAzimuthToleranceStartNumber(coordinator),
         SunAzimuthToleranceEndNumber(coordinator),
         SunElevationThresholdNumber(coordinator),
+        SunElevationMaxNumber(coordinator),
         DailyMaxTemperatureThresholdNumber(coordinator),
         DailyMinTemperatureThresholdNumber(coordinator),
     ]
@@ -523,3 +525,25 @@ class SunElevationThresholdNumber(IntegrationNumber):
             native_unit_of_measurement="°",
         )
         super().__init__(coordinator, entity_description, ConfKeys.SUN_ELEVATION_THRESHOLD.value)
+
+
+#
+# SunElevationMaxNumber
+#
+class SunElevationMaxNumber(IntegrationNumber):
+    """Number entity for the maximum sun elevation above which the overhang blocks sunlight."""
+
+    def __init__(self, coordinator: DataUpdateCoordinator) -> None:
+        """Initialize the sun elevation maximum number entity."""
+        entity_description = NumberEntityDescription(
+            key=NUMBER_KEY_SUN_ELEVATION_MAX,
+            translation_key=NUMBER_KEY_SUN_ELEVATION_MAX,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:sun-angle",
+            native_min_value=0,
+            native_max_value=90,
+            native_step=1,
+            mode=NumberMode.BOX,
+            native_unit_of_measurement="°",
+        )
+        super().__init__(coordinator, entity_description, ConfKeys.SUN_ELEVATION_MAX.value)

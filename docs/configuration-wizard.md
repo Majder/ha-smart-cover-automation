@@ -66,12 +66,16 @@ There are several online tools available to measure azimuth. [OpenStreetMap Comp
 
 ### Sun Azimuth Window
 
-The sun azimuth window defines the angle range within which the sun is considered to be shining on a window. You can configure optional per-cover values here that override the global sun-hit window settings on the device page of the integration instance.
+The sun azimuth window defines the **absolute sun azimuth positions** at which the sun begins and stops hitting a specific cover. Unlike the global setting (which uses an angle difference from the cover's facing direction), these per-cover values are measured from north — the same scale as the cover azimuth itself.
 
-- **Sun azimuth: start** — The sun *begins* to hit when the difference between sun azimuth and cover azimuth drops below this value (entering threshold, degrees).
-- **Sun azimuth: end** — The sun *stops* hitting when the difference rises above this value (leaving threshold, degrees).
+- **Sun azimuth: start** — The absolute sun azimuth (0–359°) at which the sun *begins* to hit this window. The cover darkens when the sun's azimuth enters this value.
+- **Sun azimuth: end** — The absolute sun azimuth (0–359°) at which the sun *stops* hitting this window. The cover reopens when the sun's azimuth passes this value.
 
-Setting `end` larger than `start` creates **hysteresis** that prevents rapid on/off toggling when the sun is near the edge of the window's exposure range. Leave either field empty to use the global setting for that cover.
+For example, if a south-facing window receives direct sunlight when the sun is between 110° and 250°, set start=110 and end=250.
+
+For covers near north, the window can wrap around 0°/360°. For instance, start=350 and end=30 means the sun hits the window when its azimuth is either ≥ 350° or ≤ 30°.
+
+Leave both fields empty to use the global angle-tolerance setting instead (configurable on the device page of the integration instance).
 
 ## Step 3: Max/Min Positions (Optional)
 

@@ -299,6 +299,21 @@ class TestFlowHelperSchemaBuilding:
         schema_keys = [str(key.schema) if hasattr(key, "schema") else str(key) for key in schema.schema.keys()]
         assert const.STEP_2_SECTION_AZIMUTH in schema_keys
 
+    def test_build_schema_step_2_with_empty_covers_list(self) -> None:
+        """Test step 2 schema with no covers produces schema without azimuth or tolerance sections.
+
+        Covers the false branches of 'if azimuth_schema_dict:' and
+        'if sun_azimuth_tolerance_schema_dict:' (empty list → both dicts empty).
+        """
+        covers: list[str] = []
+        defaults: dict[str, Any] = {}
+
+        schema = FlowHelper.build_schema_step_2(covers, defaults)
+
+        schema_keys = [str(key.schema) if hasattr(key, "schema") else str(key) for key in schema.schema.keys()]
+        assert const.STEP_2_SECTION_AZIMUTH not in schema_keys
+        assert const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE not in schema_keys
+
     def test_build_schema_step_2_uses_existing_sun_azimuth_tolerance_override(self) -> None:
         """Test step 2 schema exposes the per-cover sun azimuth window section."""
 

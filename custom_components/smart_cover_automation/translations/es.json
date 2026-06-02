@@ -30,13 +30,13 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Paso 2 de 6",
-                "description": "Configure el **azimut** (dirección) de cada persiana. También puede añadir valores opcionales de **tolerancia de azimut solar** por persiana que sobrescriben la configuración global de tolerancia de azimut solar, configurable en la página del dispositivo de esta instancia de integración.\n\n(0°=Norte, 90°=Este, 180°=Sur, 270°=Oeste)",
+                "description": "Configure el **azimut** (dirección) de cada persiana.\n\nTambién puede indicar **posiciones de azimut solar absolutas** (inicio/fin) opcionales por persiana, que definen cuándo el sol incide sobre una ventana concreta: la persiana se oscurece cuando el sol alcanza el azimut de inicio y se abre de nuevo cuando supera el azimut de fin. Deje ambos campos vacíos para usar la configuración global de tolerancia de ángulo en su lugar.\n\n(0°=Norte, 90°=Este, 180°=Sur, 270°=Oeste)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Azimut de la persiana (obligatorio)"
                     },
                     "section_sun_azimuth_tolerance": {
-                        "name": "Tolerancia de azimut solar (opcional)"
+                        "name": "Ventana de azimut solar — posiciones absolutas (opcional)"
                     }
                 }
             },
@@ -271,6 +271,9 @@
             },
             "sun_elevation_threshold": {
                 "name": "Elevación mínima del sol"
+            },
+            "sun_elevation_max": {
+                "name": "Elevación solar máxima (alero)"
             },
             "tilt_external_value_day": {
                 "name": "Ángulo de inclinación: control externo (día)"

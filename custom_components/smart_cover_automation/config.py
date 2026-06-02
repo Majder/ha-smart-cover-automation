@@ -99,9 +99,10 @@ class ConfKeys(StrEnum):
         "daily_min_temperature_threshold"  # Daily low temperature threshold at which heat protection can activate (°C).
     )
     SUN_AZIMUTH_TOLERANCE = "sun_azimuth_tolerance"  # Legacy single sun azimuth tolerance (°).
-    SUN_AZIMUTH_TOLERANCE_START = "sun_azimuth_tolerance_start"  # Max angle difference (°) at which sun starts hitting.
-    SUN_AZIMUTH_TOLERANCE_END = "sun_azimuth_tolerance_end"  # Max angle difference (°) until sun stops hitting.
+    SUN_AZIMUTH_TOLERANCE_START = "sun_azimuth_tolerance_start"  # Global: max angle diff (°) from cover direction for sun to start hitting.
+    SUN_AZIMUTH_TOLERANCE_END = "sun_azimuth_tolerance_end"  # Global: max angle diff (°) from cover direction until sun stops hitting.
     SUN_ELEVATION_THRESHOLD = "sun_elevation_threshold"  # Min sun elevation to act (degrees).
+    SUN_ELEVATION_MAX = "sun_elevation_max"  # Max sun elevation above which the overhang blocks sunlight (degrees).
     TILT_MIN_CHANGE_DELTA = "tilt_min_change_delta"  # Minimum tilt change (%) to actually send a service call.
     TILT_OPEN_TO_COVER_OPEN_DELAY = (
         "tilt_open_to_cover_open_delay"  # Delay stored in minutes between opening tilt and reopening the cover in day auto mode.
@@ -264,6 +265,7 @@ CONF_SPECS: dict[ConfKeys, _ConfSpec[Any]] = {
     ConfKeys.SUN_AZIMUTH_TOLERANCE_START: _ConfSpec(default=60, converter=_Converters.to_int, runtime_configurable=True),
     ConfKeys.SUN_AZIMUTH_TOLERANCE_END: _ConfSpec(default=60, converter=_Converters.to_int, runtime_configurable=True),
     ConfKeys.SUN_ELEVATION_THRESHOLD: _ConfSpec(default=0.0, converter=_Converters.to_float, runtime_configurable=True),
+    ConfKeys.SUN_ELEVATION_MAX: _ConfSpec(default=90, converter=_Converters.to_int, runtime_configurable=True),
     ConfKeys.TILT_MIN_CHANGE_DELTA: _ConfSpec(default=5, converter=_Converters.to_int),
     ConfKeys.TILT_OPEN_TO_COVER_OPEN_DELAY: _ConfSpec(default=0, converter=_Converters.to_int),
     ConfKeys.TILT_VERTICAL_POSITION: _ConfSpec(default=0, converter=_Converters.to_int),
@@ -409,6 +411,7 @@ class ResolvedConfig:
     sun_azimuth_tolerance_start: int
     sun_azimuth_tolerance_end: int
     sun_elevation_threshold: float
+    sun_elevation_max: int
     tilt_min_change_delta: int
     tilt_open_to_cover_open_delay: int
     tilt_vertical_position: int

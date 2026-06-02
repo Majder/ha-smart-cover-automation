@@ -30,13 +30,13 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Passo 2 di 6",
-                "description": "Configura l'**azimut** (direzione) per ciascuna tapparella. Puoi anche aggiungere valori opzionali di **tolleranza dell'azimut solare** per singola tapparella che sovrascrivono l'impostazione globale della tolleranza dell'azimut configurabile nella pagina del dispositivo di questa istanza dell'integrazione.\n\n(0°=Nord, 90°=Est, 180°=Sud, 270°=Ovest)",
+                "description": "Configura l'**azimut** (direzione) per ciascuna tapparella.\n\nPuoi anche specificare **posizioni di azimut solare assolute** (inizio/fine) opzionali per singola tapparella che definiscono quando il sole colpisce una finestra specifica: la tapparella si oscura quando il sole raggiunge l'azimut di inizio e si riapre quando supera l'azimut di fine. Lascia entrambi i campi vuoti per usare invece l'impostazione globale di tolleranza angolare.\n\n(0°=Nord, 90°=Est, 180°=Sud, 270°=Ovest)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Azimut della tapparella (obbligatorio)"
                     },
                     "section_sun_azimuth_tolerance": {
-                        "name": "Tolleranza dell'azimut solare (opzionale)"
+                        "name": "Finestra di azimut solare — posizioni assolute (opzionale)"
                     }
                 }
             },
@@ -271,6 +271,9 @@
             },
             "sun_elevation_threshold": {
                 "name": "Elevazione minima del sole"
+            },
+            "sun_elevation_max": {
+                "name": "Elevazione solare massima (gronda)"
             },
             "tilt_external_value_day": {
                 "name": "Angolo di inclinazione: controllo esterno (giorno)"

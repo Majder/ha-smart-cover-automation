@@ -1051,15 +1051,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
         errors: dict[str, str] = {}
         tolerance_section = user_input.get(const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE)
-        if not isinstance(tolerance_section, Mapping):
-            return errors
-
-        for key, raw_value in tolerance_section.items():
-            if OptionsFlowHandler._is_empty_value(raw_value):
-                continue
-            if to_int_or_none(raw_value) is None:
-                errors["base"] = const.ERROR_INVALID_INTEGER
-                errors[str(key)] = const.ERROR_INVALID_INTEGER
+        if isinstance(tolerance_section, Mapping):
+            for key, raw_value in tolerance_section.items():
+                if OptionsFlowHandler._is_empty_value(raw_value):
+                    continue
+                if to_int_or_none(raw_value) is None:
+                    errors["base"] = const.ERROR_INVALID_INTEGER
+                    errors[str(key)] = const.ERROR_INVALID_INTEGER
 
         return errors
 

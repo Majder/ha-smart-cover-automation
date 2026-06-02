@@ -30,13 +30,13 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Étape 2 sur 6",
-                "description": "Configurez l'**azimut** (direction) pour chaque volet. Vous pouvez également ajouter des valeurs facultatives de **tolérance de l'azimut solaire** par volet qui remplacent le réglage global de tolérance de l'azimut solaire configurable sur la page de l'appareil de cette instance d'intégration.\n\n(0°=Nord, 90°=Est, 180°=Sud, 270°=Ouest)",
+                "description": "Configurez l'**azimut** (direction) pour chaque volet.\n\nVous pouvez également définir des **positions d'azimut solaire absolues** (début/fin) optionnelles par volet qui définissent quand le soleil frappe une fenêtre donnée : le volet se ferme lorsque le soleil atteint l'azimut de début et se rouvre lorsqu'il dépasse l'azimut de fin. Laissez les deux champs vides pour utiliser à la place le réglage global de tolérance angulaire.\n\n(0°=Nord, 90°=Est, 180°=Sud, 270°=Ouest)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Azimut du volet (obligatoire)"
                     },
                     "section_sun_azimuth_tolerance": {
-                        "name": "Tolérance de l'azimut solaire (facultatif)"
+                        "name": "Fenêtre d'azimut solaire — positions absolues (facultatif)"
                     }
                 }
             },
@@ -271,6 +271,9 @@
             },
             "sun_elevation_threshold": {
                 "name": "Élévation minimale du soleil"
+            },
+            "sun_elevation_max": {
+                "name": "Élévation solaire maximale (auvent)"
             },
             "tilt_external_value_day": {
                 "name": "Angle d'inclinaison : contrôle externe (jour)"

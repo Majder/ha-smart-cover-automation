@@ -329,43 +329,40 @@ class CoverAutomation:
             return None
         return cover_azimuth
 
-    def _get_cover_sun_azimuth_tolerance_start(self) -> int:
-        """Get per-cover sun-entering tolerance or fall back to the global setting."""
+    def _get_per_cover_azimuth_start(self) -> int | None:
+        """Return the per-cover absolute sun azimuth start value, or None if not configured.
 
-        cover_tolerance_raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}")
-        if cover_tolerance_raw is None:
-            cover_tolerance_raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE}")
+        When set, this is an absolute sun azimuth (0-359°) at which the cover's
+        sun-hit window begins.  It is intentionally *not* affected by the legacy
+        single-tolerance fallback because the semantics are different (absolute
+        position vs. angle difference from cover direction).
+        """
 
-        cover_tolerance = to_int_or_none(cover_tolerance_raw)
-        if cover_tolerance is None:
-            return self.resolved.sun_azimuth_tolerance_start
-        return cover_tolerance
+        raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}")
+        return to_int_or_none(raw)
 
-    def _get_cover_sun_azimuth_tolerance_end(self) -> int:
-        """Get per-cover sun-leaving tolerance or fall back to the global setting."""
+    def _get_per_cover_azimuth_end(self) -> int | None:
+        """Return the per-cover absolute sun azimuth end value, or None if not configured.
 
-        cover_tolerance_raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}")
-        if cover_tolerance_raw is None:
-            cover_tolerance_raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE}")
+        When set, this is an absolute sun azimuth (0-359°) at which the cover's
+        sun-hit window ends.  See _get_per_cover_azimuth_start for the semantics.
+        """
 
-        cover_tolerance = to_int_or_none(cover_tolerance_raw)
-        if cover_tolerance is None:
-            return self.resolved.sun_azimuth_tolerance_end
-        return cover_tolerance
+        raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}")
+        return to_int_or_none(raw)
 
-    def _get_ordered_sun_azimuth_tolerances(self) -> tuple[int, int]:
-        """Return the ordered start/end thresholds for sun-hit hysteresis."""
+    @staticmethod
+    def _is_in_azimuth_range(sun_azimuth: float, start: int, end: int) -> bool:
+        """Return whether sun_azimuth falls within the [start, end] absolute azimuth window.
 
-        start = self._get_cover_sun_azimuth_tolerance_start()
-        end = self._get_cover_sun_azimuth_tolerance_end()
+        Handles wrap-around through north (e.g. start=350°, end=30° covers
+        350°→360° and 0°→30°).
+        """
+
         if start <= end:
-            return start, end
-
-        self._log_cover_msg(
-            f"Sun azimuth thresholds are inverted (start={start}, end={end}); using the smaller value as the entry threshold",
-            const.LogSeverity.WARNING,
-        )
-        return end, start
+            return start <= sun_azimuth <= end
+        # Wraps around 0°/360° (e.g. north-facing cover with start=350, end=30)
+        return sun_azimuth >= start or sun_azimuth <= end
 
     #
     # _validate_cover_state
@@ -720,22 +717,48 @@ class CoverAutomation:
     ) -> tuple[bool, float]:
         """Calculate if sun is hitting the window.
 
+        When per-cover absolute azimuth start/end values are configured, sun_hitting
+        is True if the sun's azimuth falls within that absolute window (supports
+        wrap-around through north, e.g. start=350°, end=30°).
+
+        When no per-cover values are set the global azimuth tolerance (angle from
+        the cover's facing direction) is used with hysteresis: the cover enters the
+        "hitting" state when the angle difference falls within tolerance_start and
+        exits only when the difference exceeds tolerance_end.
+
         Args:
-            sun_azimuth: Current sun azimuth
-            sun_elevation: Current sun elevation
-            cover_azimuth: Cover azimuth (direction)
+            sun_azimuth: Current sun azimuth in degrees (0-360).
+            sun_elevation: Current sun elevation in degrees.
+            cover_azimuth: Cover's facing direction in degrees.
+            previous_sun_hitting: Whether sun was hitting in the last cycle.
+            update_state: If True, persist the new hitting state.
 
         Returns:
-            Tuple of (is_sun_hitting, azimuth_difference)
+            Tuple of (is_sun_hitting, azimuth_difference_from_cover).
         """
 
         sun_azimuth_difference = self._calculate_angle_difference(sun_azimuth, cover_azimuth)
-        sun_azimuth_tolerance_start, sun_azimuth_tolerance_end = self._get_ordered_sun_azimuth_tolerances()
+
         if sun_elevation >= self.resolved.sun_elevation_threshold:
-            if previous_sun_hitting is True:
-                sun_hitting = sun_azimuth_difference <= sun_azimuth_tolerance_end
+            if sun_elevation > self.resolved.sun_elevation_max:
+                sun_hitting = False
             else:
-                sun_hitting = sun_azimuth_difference <= sun_azimuth_tolerance_start
+                per_cover_start = self._get_per_cover_azimuth_start()
+                per_cover_end = self._get_per_cover_azimuth_end()
+
+                if per_cover_start is not None and per_cover_end is not None:
+                    # Per-cover absolute azimuth window: sun hits when its azimuth
+                    # falls between the configured start and end values.
+                    sun_hitting = self._is_in_azimuth_range(sun_azimuth, per_cover_start, per_cover_end)
+                else:
+                    # Global tolerance fallback: angle difference from cover direction
+                    # with hysteresis to prevent oscillation near the boundary.
+                    tolerance_start = self.resolved.sun_azimuth_tolerance_start
+                    tolerance_end = self.resolved.sun_azimuth_tolerance_end
+                    if previous_sun_hitting is True:
+                        sun_hitting = sun_azimuth_difference <= tolerance_end
+                    else:
+                        sun_hitting = sun_azimuth_difference <= tolerance_start
         else:
             sun_hitting = False
 
