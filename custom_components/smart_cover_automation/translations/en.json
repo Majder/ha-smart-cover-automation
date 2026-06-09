@@ -281,6 +281,9 @@
             "sun_elevation_max": {
                 "name": "Maximum sun elevation (overhang)"
             },
+            "sun_elevation_max_hysteresis": {
+                "name": "Overhang: hysteresis (flap-prevention)"
+            },
             "tilt_external_value_day": {
                 "name": "Tilt angle: external control (day)"
             },

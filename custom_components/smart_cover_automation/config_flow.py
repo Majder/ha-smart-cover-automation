@@ -168,11 +168,18 @@ class FlowHelper:
         )
 
         for cover in sorted(covers):
-            for suffix in (const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START, const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END):
+            for suffix in (
+                const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START,
+                const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END,
+                const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS,
+            ):
                 key = f"{cover}_{suffix}"
                 legacy_key = f"{cover}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE}"
                 raw = defaults.get(key)
-                if raw is None:
+                if raw is None and suffix in (
+                    const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START,
+                    const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END,
+                ):
                     raw = defaults.get(legacy_key)
                 default_value = to_int_or_none(raw)
 
@@ -957,6 +964,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             const.COVER_SFX_SUN_AZIMUTH_TOLERANCE,
             const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START,
             const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END,
+            const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS,
         ):
             section_names = {const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE}
         elif suffix in (
@@ -1209,6 +1217,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             f"_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE}",
             f"_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}",
             f"_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}",
+            f"_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}",
             f"_{const.COVER_SFX_MAX_CLOSURE}",
             f"_{const.COVER_SFX_MIN_CLOSURE}",
             f"_{const.COVER_SFX_EVENING_CLOSURE_MAX_CLOSURE}",
@@ -1354,8 +1363,16 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                 covers_in_input,
                 current_settings,
             )
+            sun_elevation_max_hysteresis_data = self._build_section_cover_settings(
+                user_input,
+                const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE,
+                const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS,
+                covers_in_input,
+                current_settings,
+            )
             self._config_data.update(sun_azimuth_tolerance_start_data)
             self._config_data.update(sun_azimuth_tolerance_end_data)
+            self._config_data.update(sun_elevation_max_hysteresis_data)
 
             # Store step 2 data (temporarily, for the next step of the flow) and proceed to step 3
             return await self.async_step_3()

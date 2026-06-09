@@ -275,6 +275,9 @@
             "sun_elevation_max": {
                 "name": "Maximale zonshoogte (overstek)"
             },
+            "sun_elevation_max_hysteresis": {
+                "name": "Overstek: hysterese (vlap-preventie)"
+            },
             "tilt_external_value_day": {
                 "name": "Kantelhoek: externe besturing (dag)"
             },

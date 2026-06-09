@@ -236,6 +236,7 @@ class TestOptionsFlowStep2:
             const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
                 f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "25",
                 f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": "35",
+                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}": "8",
             },
         }
 
@@ -246,6 +247,7 @@ class TestOptionsFlowStep2:
         assert result_dict["step_id"] == "3"
         assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"] == 25
         assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"] == 35
+        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}"] == 8
 
     async def test_step_2_assigns_default_azimuth_to_new_cover_when_section_is_omitted(self, mock_hass_with_covers: MagicMock) -> None:
         """New covers should still get a valid azimuth if the collapsed azimuth section is not submitted."""
@@ -343,6 +345,7 @@ class TestOptionsFlowStep2:
         user_input = {
             const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
                 f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "20",
+                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}": "6",
             },
         }
 
@@ -358,6 +361,16 @@ class TestOptionsFlowStep2:
         )
 
         assert result[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"] == 20
+
+        result_hysteresis = OptionsFlowHandler._build_section_cover_settings(
+            user_input,
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE,
+            const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS,
+            covers,
+            current_settings,
+        )
+
+        assert result_hysteresis[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}"] == 6
 
 
 class TestOptionsFlowNavigation:

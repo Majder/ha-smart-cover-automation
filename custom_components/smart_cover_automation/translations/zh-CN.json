@@ -275,6 +275,9 @@
             "sun_elevation_max": {
                 "name": "最大太阳高度角（屋檐）"
             },
+            "sun_elevation_max_hysteresis": {
+                "name": "屋檐：迷滻区间（防防抖动）"
+            },
             "tilt_external_value_day": {
                 "name": "叶片倾角：外部控制（日间）"
             },

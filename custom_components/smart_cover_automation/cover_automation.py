@@ -351,6 +351,12 @@ class CoverAutomation:
         raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}")
         return to_int_or_none(raw)
 
+    def _get_per_cover_sun_elevation_max_hysteresis(self) -> float | None:
+        """Return per-cover hysteresis for sun_elevation_max, or None if not configured."""
+
+        raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}")
+        return to_float_or_none(raw)
+
     @staticmethod
     def _is_in_azimuth_range(sun_azimuth: float, start: int, end: int) -> bool:
         """Return whether sun_azimuth falls within the [start, end] absolute azimuth window.
@@ -726,6 +732,10 @@ class CoverAutomation:
         "hitting" state when the angle difference falls within tolerance_start and
         exits only when the difference exceeds tolerance_end.
 
+        For sun_elevation_max (overhang), hysteresis prevents flapping near the
+        threshold: covers open only when elevation exceeds max+hysteresis, close
+        when below max, and maintain previous state in-between.
+
         Args:
             sun_azimuth: Current sun azimuth in degrees (0-360).
             sun_elevation: Current sun elevation in degrees.
@@ -737,12 +747,36 @@ class CoverAutomation:
             Tuple of (is_sun_hitting, azimuth_difference_from_cover).
         """
 
+        elevation_threshold = to_float_or_none(self.resolved.sun_elevation_threshold)
+        if elevation_threshold is None:
+            elevation_threshold = 0.0
+
+        elevation_max = to_float_or_none(self.resolved.sun_elevation_max)
+        if elevation_max is None:
+            elevation_max = 90.0
+
+        hysteresis = self._get_per_cover_sun_elevation_max_hysteresis()
+        if hysteresis is None:
+            hysteresis = to_float_or_none(self.resolved.sun_elevation_max_hysteresis)
+        if hysteresis is None:
+            hysteresis = 0.0
+
+        previous_hitting_state = previous_sun_hitting if isinstance(previous_sun_hitting, bool) else None
+
         sun_azimuth_difference = self._calculate_angle_difference(sun_azimuth, cover_azimuth)
 
-        if sun_elevation >= self.resolved.sun_elevation_threshold:
-            if sun_elevation > self.resolved.sun_elevation_max:
-                sun_hitting = False
+        if sun_elevation >= elevation_threshold:
+            # Check elevation max with hysteresis to prevent flapping near threshold.
+            if sun_elevation > elevation_max + hysteresis:
+                # Well above max+hysteresis: overhang blocks sun → not hitting.
+                # Guard brief winter peaks: if cover was just closed due to sunlight and
+                # the sun will drop below max again within one hour, keep it closed.
+                sun_hitting = self._should_keep_closed_for_upcoming_elevation_drop(previous_hitting_state)
+            elif sun_elevation >= elevation_max:
+                # Within hysteresis zone [max, max+hysteresis]: keep previous state.
+                sun_hitting = previous_hitting_state if previous_hitting_state is not None else False
             else:
+                # Below elevation max: run normal azimuth logic.
                 per_cover_start = self._get_per_cover_azimuth_start()
                 per_cover_end = self._get_per_cover_azimuth_end()
 
@@ -755,7 +789,7 @@ class CoverAutomation:
                     # with hysteresis to prevent oscillation near the boundary.
                     tolerance_start = self.resolved.sun_azimuth_tolerance_start
                     tolerance_end = self.resolved.sun_azimuth_tolerance_end
-                    if previous_sun_hitting is True:
+                    if previous_hitting_state is True:
                         sun_hitting = sun_azimuth_difference <= tolerance_end
                     else:
                         sun_hitting = sun_azimuth_difference <= tolerance_start
@@ -763,9 +797,36 @@ class CoverAutomation:
             sun_hitting = False
 
         if update_state:
-            self._cover_pos_history_mgr.set_last_sun_hitting_state(self.entity_id, sun_hitting)
+            self._cover_pos_history_mgr.dset_last_sun_hitting_state(self.entity_id, sun_hitting)
 
         return sun_hitting, sun_azimuth_difference
+
+    def _should_keep_closed_for_upcoming_elevation_drop(self, previous_sun_hitting: bool | None) -> bool:
+        """Return True when a brief elevation peak should not trigger reopening.
+
+        The guard only applies if the previous cycle was in sun-hitting state
+        (cover expected to be closed due to direct sunlight).
+        """
+
+        if previous_sun_hitting is not True:
+            return False
+
+        lookahead_datetime = datetime.now(timezone.utc) + const.SUN_ELEVATION_REOPEN_GUARD_LOOKAHEAD
+        try:
+            _, lookahead_elevation_raw = self._ha_interface.get_sun_data_for_datetime(lookahead_datetime)
+        except Exception as err:
+            self._logger.debug(
+                "[%s] Sun elevation lookahead unavailable; skipping reopen guard: %s",
+                self.entity_id,
+                err,
+            )
+            return False
+
+        lookahead_elevation = to_float_or_none(lookahead_elevation_raw)
+        if lookahead_elevation is None:
+            return False
+
+        return lookahead_elevation < self.resolved.sun_elevation_max
 
     def _calculate_effective_sun_hitting(self, sensor_data: SensorData, cover_azimuth: float) -> tuple[bool, float]:
         """Calculate whether sun hits this cover for the current automation mode."""

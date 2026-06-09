@@ -275,6 +275,9 @@
             "sun_elevation_max": {
                 "name": "Elevazione solare massima (gronda)"
             },
+            "sun_elevation_max_hysteresis": {
+                "name": "Gronda: isteresi (prevenzione sfarfallio)"
+            },
             "tilt_external_value_day": {
                 "name": "Angolo di inclinazione: controllo esterno (giorno)"
             },

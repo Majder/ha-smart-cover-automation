@@ -275,6 +275,9 @@
             "sun_elevation_max": {
                 "name": "Élévation solaire maximale (auvent)"
             },
+            "sun_elevation_max_hysteresis": {
+                "name": "Auvent : hystérésis (prévention oscillation)"
+            },
             "tilt_external_value_day": {
                 "name": "Angle d'inclinaison : contrôle externe (jour)"
             },

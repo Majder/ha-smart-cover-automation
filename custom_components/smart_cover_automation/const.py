@@ -83,6 +83,9 @@ COVER_SFX_AZIMUTH: Final[str] = "cover_azimuth"  # Cover/window azimuth (°)
 COVER_SFX_SUN_AZIMUTH_TOLERANCE: Final[str] = "cover_sun_azimuth_tolerance"  # Legacy per-cover override for sun azimuth tolerance (°).
 COVER_SFX_SUN_AZIMUTH_TOLERANCE_START: Final[str] = "cover_sun_azimuth_tolerance_start"  # Per-cover override for sun entering the window (°).
 COVER_SFX_SUN_AZIMUTH_TOLERANCE_END: Final[str] = "cover_sun_azimuth_tolerance_end"  # Per-cover override for sun leaving the window (°).
+COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS: Final[str] = (
+    "cover_sun_elevation_max_hysteresis"  # Per-cover override for hysteresis around max sun elevation (°).
+)
 COVER_SFX_MAX_CLOSURE: Final[str] = "cover_max_closure"  # Cover maximum closure position (%)
 COVER_SFX_MIN_CLOSURE: Final[str] = "cover_min_closure"  # Cover minimum closure position (%)
 COVER_SFX_EVENING_CLOSURE_MAX_CLOSURE: Final[str] = (
@@ -222,6 +225,7 @@ NUMBER_KEY_DAILY_MIN_TEMPERATURE_THRESHOLD: Final[str] = (
 )
 NUMBER_KEY_SUN_ELEVATION_THRESHOLD: Final[str] = "sun_elevation_threshold"  # Key for the sun elevation threshold number entity
 NUMBER_KEY_SUN_ELEVATION_MAX: Final[str] = "sun_elevation_max"  # Key for the sun elevation maximum (overhang) number entity
+NUMBER_KEY_SUN_ELEVATION_MAX_HYSTERESIS: Final[str] = "sun_elevation_max_hysteresis"  # Key for hysteresis window (degrees) that prevents cover flapping near the elevation max
 
 # Options flow translation keys
 ERROR_INVALID_COVER: Final[str] = "invalid_cover"
@@ -264,6 +268,7 @@ COVER_POS_FULLY_CLOSED: Final = 0
 UPDATE_INTERVAL: Final = timedelta(seconds=60)
 MAX_COVER_MOVEMENT_STAGGER_DELAY_SECONDS: Final[int] = 3600
 SUNSET_CLOSING_WINDOW_MINUTES: Final[int] = 10  # Duration of the evening closure window
+SUN_ELEVATION_REOPEN_GUARD_LOOKAHEAD: Final = timedelta(hours=1)  # Keep cover closed if sun is forecast to drop below elevation max within this window.
 
 # Logbook service/translation keys
 SERVICE_LOGBOOK_ENTRY: Final[str] = "logbook_entry"

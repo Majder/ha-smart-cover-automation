@@ -275,6 +275,9 @@
             "sun_elevation_max": {
                 "name": "Elevación solar máxima (alero)"
             },
+            "sun_elevation_max_hysteresis": {
+                "name": "Alero: histéresis (prevención de aleteo)"
+            },
             "tilt_external_value_day": {
                 "name": "Ángulo de inclinación: control externo (día)"
             },

@@ -31,6 +31,7 @@ from .const import (
     NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_START,
     NUMBER_KEY_SUN_ELEVATION_THRESHOLD,
     NUMBER_KEY_SUN_ELEVATION_MAX,
+    NUMBER_KEY_SUN_ELEVATION_MAX_HYSTERESIS,
     NUMBER_KEY_TILT_EXTERNAL_VALUE_DAY,
     NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT,
     TiltMode,
@@ -74,6 +75,7 @@ async def async_setup_entry(
         SunAzimuthToleranceEndNumber(coordinator),
         SunElevationThresholdNumber(coordinator),
         SunElevationMaxNumber(coordinator),
+        SunElevationMaxHysteresisNumber(coordinator),
         DailyMaxTemperatureThresholdNumber(coordinator),
         DailyMinTemperatureThresholdNumber(coordinator),
     ]
@@ -547,3 +549,31 @@ class SunElevationMaxNumber(IntegrationNumber):
             native_unit_of_measurement="°",
         )
         super().__init__(coordinator, entity_description, ConfKeys.SUN_ELEVATION_MAX.value)
+
+
+#
+# SunElevationMaxHysteresisNumber
+#
+class SunElevationMaxHysteresisNumber(IntegrationNumber):
+    """Number entity for sun_elevation_max hysteresis.
+
+    Hysteresis window (degrees) that prevents cover flapping near the elevation max.
+    Covers open only when sun_elevation > sun_elevation_max + hysteresis, and stay
+    open/closed based on previous state when within the hysteresis zone.
+    Set to 0 to disable hysteresis (immediate open at sun_elevation_max).
+    """
+
+    def __init__(self, coordinator: DataUpdateCoordinator) -> None:
+        """Initialize the sun elevation max hysteresis number entity."""
+        entity_description = NumberEntityDescription(
+            key=NUMBER_KEY_SUN_ELEVATION_MAX_HYSTERESIS,
+            translation_key=NUMBER_KEY_SUN_ELEVATION_MAX_HYSTERESIS,
+            entity_category=EntityCategory.CONFIG,
+            icon="mdi:triangle-wave",
+            native_min_value=0,
+            native_max_value=30,
+            native_step=1,
+            mode=NumberMode.BOX,
+            native_unit_of_measurement="°",
+        )
+        super().__init__(coordinator, entity_description, ConfKeys.SUN_ELEVATION_MAX_HYSTERESIS.value)

@@ -26,6 +26,7 @@ from custom_components.smart_cover_automation import DOMAIN
 from custom_components.smart_cover_automation.config import ConfKeys
 from custom_components.smart_cover_automation.const import (
     COVER_SFX_AZIMUTH,
+    COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS,
     COVER_SFX_SUN_AZIMUTH_TOLERANCE_END,
     COVER_SFX_SUN_AZIMUTH_TOLERANCE_START,
     ERROR_INVALID_INTEGER,
@@ -538,6 +539,7 @@ class TestOptionsFlow:
                     STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
                         f"{TEST_COVER_2}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "25",
                         f"{TEST_COVER_2}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": "35",
+                        f"{TEST_COVER_2}_{COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}": "8",
                     },
                 },
             )
@@ -573,6 +575,7 @@ class TestOptionsFlow:
         assert entry.options[f"{TEST_COVER_2}_{COVER_SFX_AZIMUTH}"] == 180
         assert entry.options[f"{TEST_COVER_2}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"] == 25
         assert entry.options[f"{TEST_COVER_2}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"] == 35
+        assert entry.options[f"{TEST_COVER_2}_{COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}"] == 8
 
     # ------------------------------------------------------------------
     # 3.3  Options flow step 1 validation — invalid cover entity

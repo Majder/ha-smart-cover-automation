@@ -275,6 +275,9 @@
             "sun_elevation_max": {
                 "name": "Maksymalna wysokość słońca (okap)"
             },
+            "sun_elevation_max_hysteresis": {
+                "name": "Okap: histereza (zabezpieczenie przed trzepotaniem)"
+            },
             "tilt_external_value_day": {
                 "name": "Kąt nachylenia lamel: sterowanie zewnętrzne (dzień)"
             },
