@@ -128,10 +128,36 @@ class AutomationEngine:
 
         return dict(self._current_day_temperature_extrema) if self._current_day_temperature_extrema is not None else None
 
-    def restore_current_day_temperature_extrema(self, extrema: dict[str, Any] | None) -> None:
+def restore_current_day_temperature_extrema(self, extrema: dict[str, Any] | None) -> None:
         """Restore current-day temperature extrema from persistent storage."""
 
-        self._current_day_temperature_extrema = dict(extrema) if extrema is not None else None
+        if extrema is None:
+            self._current_day_temperature_extrema = None
+            return
+
+        # Validate date field
+        date_val = extrema.get("date")
+        if not isinstance(date_val, str):
+            self._current_day_temperature_extrema = None
+            return
+        try:
+            date.fromisoformat(date_val)
+        except ValueError:
+            self._current_day_temperature_extrema = None
+            return
+
+        # Validate temp_max field
+        temp_max_val = extrema.get("temp_max")
+        if not isinstance(temp_max_val, (int, float)):
+            self._current_day_temperature_extrema = None
+            return
+
+        # Validate optional temp_min field
+        if "temp_min" in extrema and not isinstance(extrema["temp_min"], (int, float)):
+            self._current_day_temperature_extrema = None
+            return
+
+        self._current_day_temperature_extrema = dict(extrema)
 
     def cancel_pending_cover_executions(self) -> None:
         """Cancel all queued staggered cover executions."""
