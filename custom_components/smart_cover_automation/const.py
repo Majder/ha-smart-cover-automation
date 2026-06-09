@@ -87,6 +87,9 @@ COVER_SFX_SUN_AZIMUTH_TOLERANCE_START: Final[str] = (
 COVER_SFX_SUN_AZIMUTH_TOLERANCE_END: Final[str] = (
     "cover_sun_azimuth_tolerance_end"  # Per-cover override for when sun stops hitting the cover (° after cover azimuth).
 )
+COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS: Final[str] = (
+    "cover_sun_elevation_max_hysteresis"  # Per-cover override for hysteresis around max sun elevation (°).
+)
 COVER_SFX_MAX_CLOSURE: Final[str] = "cover_max_closure"  # Cover maximum closure position (%)
 COVER_SFX_MIN_CLOSURE: Final[str] = "cover_min_closure"  # Cover minimum closure position (%)
 COVER_SFX_EVENING_CLOSURE_MAX_CLOSURE: Final[str] = (
@@ -200,6 +203,8 @@ SENSOR_KEY_EVENING_CLOSURE_MODE: Final[str] = "close_covers_after_sunset_mode"  
 SENSOR_KEY_MORNING_OPENING_TIME: Final[str] = "morning_opening_time"  # Key for the morning opening time sensor entity
 SENSOR_KEY_MORNING_OPENING_MODE: Final[str] = "morning_opening_mode"  # Key for the morning opening mode sensor entity
 NUMBER_KEY_SUN_AZIMUTH_TOLERANCE: Final[str] = "sun_azimuth_tolerance"  # Key for the sun azimuth tolerance number entity
+NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_START: Final[str] = "sun_azimuth_tolerance_start"  # Key for the sun entering-window tolerance number entity
+NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_END: Final[str] = "sun_azimuth_tolerance_end"  # Key for the sun leaving-window tolerance number entity
 NUMBER_KEY_COVERS_MAX_CLOSURE: Final[str] = "covers_max_closure"  # Key for the covers maximum closure number entity
 NUMBER_KEY_COVERS_MIN_CLOSURE: Final[str] = "covers_min_closure"  # Key for the covers minimum closure number entity
 NUMBER_KEY_MANUAL_OVERRIDE_DURATION: Final[str] = "manual_override_duration"  # Key for the manual override duration number entity
@@ -231,6 +236,7 @@ SENSOR_KEY_LOCK_MODE: Final[str] = "lock_mode"  # Key for the lock mode sensor e
 SELECT_KEY_LOCK_MODE: Final[str] = "lock_mode"  # Key for the lock mode select entity
 SELECT_KEY_AUTOMATIC_REOPENING_MODE: Final[str] = "automatic_reopening_mode"  # Key for the automatic reopening mode select entity
 LEGACY_OPTION_KEY_TEMPERATURE_THRESHOLD: Final[str] = "temp_threshold"  # Legacy key for the old heat-protection max threshold option
+LEGACY_OPTION_KEY_SUN_AZIMUTH_TOLERANCE: Final[str] = "sun_azimuth_tolerance"  # Legacy key for the old single sun azimuth tolerance option
 NUMBER_KEY_DAILY_MAX_TEMPERATURE_THRESHOLD: Final[str] = (
     "daily_max_temperature_threshold"  # Key for the daily max temperature threshold number entity
 )
@@ -238,6 +244,8 @@ NUMBER_KEY_DAILY_MIN_TEMPERATURE_THRESHOLD: Final[str] = (
     "daily_min_temperature_threshold"  # Key for the daily min temperature threshold number entity
 )
 NUMBER_KEY_SUN_ELEVATION_THRESHOLD: Final[str] = "sun_elevation_threshold"  # Key for the sun elevation threshold number entity
+NUMBER_KEY_SUN_ELEVATION_MAX: Final[str] = "sun_elevation_max"  # Key for the sun elevation maximum (overhang) number entity
+NUMBER_KEY_SUN_ELEVATION_MAX_HYSTERESIS: Final[str] = "sun_elevation_max_hysteresis"  # Key for hysteresis window (degrees) that prevents cover flapping near the elevation max
 
 # Options flow translation keys
 ERROR_INVALID_COVER: Final[str] = "invalid_cover"
@@ -246,6 +254,7 @@ ERROR_INVALID_WEATHER_ENTITY: Final[str] = "invalid_weather_entity"
 ERROR_NO_COVERS: Final[str] = "no_covers"
 ERROR_NO_WEATHER_ENTITY: Final[str] = "no_weather_entity"
 STEP_2_SECTION_AZIMUTH: Final[str] = "section_azimuth"
+STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: Final[str] = "section_sun_azimuth_tolerance"
 STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: Final[str] = "section_sun_azimuth_tolerance_start"
 STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: Final[str] = "section_sun_azimuth_tolerance_end"
 STEP_3_SECTION_MAX_CLOSURE: Final[str] = "section_max_closure"
@@ -281,6 +290,7 @@ COVER_POS_FULLY_CLOSED: Final = 0
 UPDATE_INTERVAL: Final = timedelta(seconds=60)
 MAX_COVER_MOVEMENT_STAGGER_DELAY_SECONDS: Final[int] = 3600
 SUNSET_CLOSING_WINDOW_MINUTES: Final[int] = 10  # Duration of the evening closure window
+SUN_ELEVATION_REOPEN_GUARD_LOOKAHEAD: Final = timedelta(hours=1)  # Keep cover closed if sun is forecast to drop below elevation max within this window.
 
 # Logbook service/translation keys
 SERVICE_LOGBOOK_ENTRY: Final[str] = "logbook_entry"

@@ -64,9 +64,18 @@ There are several online tools available to measure azimuth. [OpenStreetMap Comp
 
 *New in 4.5:*
 
-### Sun Azimuth Tolerance
+### Sun Azimuth Window
 
-The sun azimuth tolerance specifies at which angle between sun and cover the sun is considered to be shining on the window. The values you can optionally specify here override the global azimuth tolerance setting configurable on the device page of the integration instance.
+The sun azimuth window defines the **absolute sun azimuth positions** at which the sun begins and stops hitting a specific cover. Unlike the global setting (which uses an angle difference from the cover's facing direction), these per-cover values are measured from north — the same scale as the cover azimuth itself.
+
+- **Sun azimuth: start** — The absolute sun azimuth (0–359°) at which the sun *begins* to hit this window. The cover darkens when the sun's azimuth enters this value.
+- **Sun azimuth: end** — The absolute sun azimuth (0–359°) at which the sun *stops* hitting this window. The cover reopens when the sun's azimuth passes this value.
+
+For example, if a south-facing window receives direct sunlight when the sun is between 110° and 250°, set start=110 and end=250.
+
+For covers near north, the window can wrap around 0°/360°. For instance, start=350 and end=30 means the sun hits the window when its azimuth is either ≥ 350° or ≤ 30°.
+
+Leave both fields empty to use the global angle-tolerance setting instead (configurable on the device page of the integration instance).
 
 The following settings are available for each cover:
 

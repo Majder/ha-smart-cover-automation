@@ -329,17 +329,46 @@ class CoverAutomation:
             return None
         return cover_azimuth
 
-    def _get_cover_sun_azimuth_tolerance_range(self) -> tuple[int, int]:
-        cover_tolerance_start_raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}")
-        cover_tolerance_end_raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}")
-        cover_tolerance_start = to_int_or_none(cover_tolerance_start_raw)
-        cover_tolerance_end = to_int_or_none(cover_tolerance_end_raw)
-        fallback_tolerance = self.resolved.sun_azimuth_tolerance
+    def _get_per_cover_azimuth_start(self) -> int | None:
+        """Return the per-cover absolute sun azimuth start value, or None if not configured.
 
-        return (
-            fallback_tolerance if cover_tolerance_start is None else cover_tolerance_start,
-            fallback_tolerance if cover_tolerance_end is None else cover_tolerance_end,
-        )
+        When set, this is an absolute sun azimuth (0-359°) at which the cover's
+        sun-hit window begins.  It is intentionally *not* affected by the legacy
+        single-tolerance fallback because the semantics are different (absolute
+        position vs. angle difference from cover direction).
+        """
+
+        raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}")
+        return to_int_or_none(raw)
+
+    def _get_per_cover_azimuth_end(self) -> int | None:
+        """Return the per-cover absolute sun azimuth end value, or None if not configured.
+
+        When set, this is an absolute sun azimuth (0-359°) at which the cover's
+        sun-hit window ends.  See _get_per_cover_azimuth_start for the semantics.
+        """
+
+        raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}")
+        return to_int_or_none(raw)
+
+    def _get_per_cover_sun_elevation_max_hysteresis(self) -> float | None:
+        """Return per-cover hysteresis for sun_elevation_max, or None if not configured."""
+
+        raw = self.config.get(f"{self.entity_id}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}")
+        return to_float_or_none(raw)
+
+    @staticmethod
+    def _is_in_azimuth_range(sun_azimuth: float, start: int, end: int) -> bool:
+        """Return whether sun_azimuth falls within the [start, end] absolute azimuth window.
+
+        Handles wrap-around through north (e.g. start=350°, end=30° covers
+        350°→360° and 0°→30°).
+        """
+
+        if start <= end:
+            return start <= sun_azimuth <= end
+        # Wraps around 0°/360° (e.g. north-facing cover with start=350, end=30)
+        return sun_azimuth >= start or sun_azimuth <= end
 
     #
     # _validate_cover_state
@@ -684,43 +713,152 @@ class CoverAutomation:
     #
     # _calculate_sun_hitting
     #
-    def _calculate_sun_hitting(self, sun_azimuth: float, sun_elevation: float, cover_azimuth: float) -> tuple[bool, float]:
+    def _calculate_sun_hitting(
+        self,
+        sun_azimuth: float,
+        sun_elevation: float,
+        cover_azimuth: float,
+        previous_sun_hitting: bool | None = None,
+        update_state: bool = True,
+    ) -> tuple[bool, float]:
         """Calculate if sun is hitting the window.
 
+        When per-cover absolute azimuth start/end values are configured, sun_hitting
+        is True if the sun's azimuth falls within that absolute window (supports
+        wrap-around through north, e.g. start=350°, end=30°).
+
+        When no per-cover values are set the global azimuth tolerance (angle from
+        the cover's facing direction) is used with hysteresis: the cover enters the
+        "hitting" state when the angle difference falls within tolerance_start and
+        exits only when the difference exceeds tolerance_end.
+
+        For sun_elevation_max (overhang), hysteresis prevents flapping near the
+        threshold: covers open only when elevation exceeds max+hysteresis, close
+        when below max, and maintain previous state in-between.
+
         Args:
-            sun_azimuth: Current sun azimuth
-            sun_elevation: Current sun elevation
-            cover_azimuth: Cover azimuth (direction)
+            sun_azimuth: Current sun azimuth in degrees (0-360).
+            sun_elevation: Current sun elevation in degrees.
+            cover_azimuth: Cover's facing direction in degrees.
+            previous_sun_hitting: Whether sun was hitting in the last cycle.
+            update_state: If True, persist the new hitting state.
 
         Returns:
-            Tuple of (is_sun_hitting, azimuth_difference)
+            Tuple of (is_sun_hitting, azimuth_difference_from_cover).
         """
 
+        elevation_threshold = to_float_or_none(self.resolved.sun_elevation_threshold)
+        if elevation_threshold is None:
+            elevation_threshold = 0.0
+
+        elevation_max = to_float_or_none(self.resolved.sun_elevation_max)
+        if elevation_max is None:
+            elevation_max = 90.0
+
+        hysteresis = self._get_per_cover_sun_elevation_max_hysteresis()
+        if hysteresis is None:
+            hysteresis = to_float_or_none(self.resolved.sun_elevation_max_hysteresis)
+        if hysteresis is None:
+            hysteresis = 0.0
+
+        previous_hitting_state = previous_sun_hitting if isinstance(previous_sun_hitting, bool) else None
+
         sun_azimuth_difference = self._calculate_angle_difference(sun_azimuth, cover_azimuth)
-        signed_sun_azimuth_difference = self._calculate_signed_angle_difference(sun_azimuth, cover_azimuth)
-        sun_azimuth_tolerance_start, sun_azimuth_tolerance_end = self._get_cover_sun_azimuth_tolerance_range()
-        if sun_elevation >= self.resolved.sun_elevation_threshold:
-            sun_hitting = -sun_azimuth_tolerance_start < signed_sun_azimuth_difference < sun_azimuth_tolerance_end
+
+        if sun_elevation >= elevation_threshold:
+            # Check elevation max with hysteresis to prevent flapping near threshold.
+            if sun_elevation > elevation_max + hysteresis:
+                # Well above max+hysteresis: overhang blocks sun → not hitting.
+                # Guard brief winter peaks: if cover was just closed due to sunlight and
+                # the sun will drop below max again within one hour, keep it closed.
+                sun_hitting = self._should_keep_closed_for_upcoming_elevation_drop(previous_hitting_state)
+            elif sun_elevation >= elevation_max:
+                # Within hysteresis zone [max, max+hysteresis]: keep previous state.
+                sun_hitting = previous_hitting_state if previous_hitting_state is not None else False
+            else:
+                # Below elevation max: run normal azimuth logic.
+                per_cover_start = self._get_per_cover_azimuth_start()
+                per_cover_end = self._get_per_cover_azimuth_end()
+
+                if per_cover_start is not None and per_cover_end is not None:
+                    # Per-cover absolute azimuth window: sun hits when its azimuth
+                    # falls between the configured start and end values.
+                    sun_hitting = self._is_in_azimuth_range(sun_azimuth, per_cover_start, per_cover_end)
+                else:
+                    # Global tolerance fallback: angle difference from cover direction
+                    # with hysteresis to prevent oscillation near the boundary.
+                    tolerance_start = self.resolved.sun_azimuth_tolerance_start
+                    tolerance_end = self.resolved.sun_azimuth_tolerance_end
+                    if previous_hitting_state is True:
+                        sun_hitting = sun_azimuth_difference <= tolerance_end
+                    else:
+                        sun_hitting = sun_azimuth_difference <= tolerance_start
         else:
             sun_hitting = False
 
+        if update_state:
+            self._cover_pos_history_mgr.set_last_sun_hitting_state(self.entity_id, sun_hitting)
+
         return sun_hitting, sun_azimuth_difference
+
+    def _should_keep_closed_for_upcoming_elevation_drop(self, previous_sun_hitting: bool | None) -> bool:
+        """Return True when a brief elevation peak should not trigger reopening.
+
+        The guard only applies if the previous cycle was in sun-hitting state
+        (cover expected to be closed due to direct sunlight).
+        """
+
+        if previous_sun_hitting is not True:
+            return False
+
+        lookahead_datetime = datetime.now(timezone.utc) + const.SUN_ELEVATION_REOPEN_GUARD_LOOKAHEAD
+        try:
+            _, lookahead_elevation_raw = self._ha_interface.get_sun_data_for_datetime(lookahead_datetime)
+        except Exception as err:
+            self._logger.debug(
+                "[%s] Sun elevation lookahead unavailable; skipping reopen guard: %s",
+                self.entity_id,
+                err,
+            )
+            return False
+
+        lookahead_elevation = to_float_or_none(lookahead_elevation_raw)
+        if lookahead_elevation is None:
+            return False
+
+        return lookahead_elevation < self.resolved.sun_elevation_max
 
     def _calculate_effective_sun_hitting(self, sensor_data: SensorData, cover_azimuth: float) -> tuple[bool, float]:
         """Calculate whether sun hits this cover for the current automation mode."""
 
+        previous_sun_hitting = self._cover_pos_history_mgr.get_last_sun_hitting_state(self.entity_id)
         if not sensor_data.sun_samples:
-            return self._calculate_sun_hitting(sensor_data.sun_azimuth, sensor_data.sun_elevation, cover_azimuth)
+            return self._calculate_sun_hitting(
+                sensor_data.sun_azimuth,
+                sensor_data.sun_elevation,
+                cover_azimuth,
+                previous_sun_hitting=previous_sun_hitting,
+                update_state=True,
+            )
 
         best_hit_difference: float | None = None
         best_overall_difference: float | None = None
+        sun_hitting = False
         for sample_azimuth, sample_elevation in sensor_data.sun_samples:
-            sun_hitting, sun_azimuth_difference = self._calculate_sun_hitting(sample_azimuth, sample_elevation, cover_azimuth)
+            sample_sun_hitting, sun_azimuth_difference = self._calculate_sun_hitting(
+                sample_azimuth,
+                sample_elevation,
+                cover_azimuth,
+                previous_sun_hitting=previous_sun_hitting,
+                update_state=False,
+            )
             if best_overall_difference is None or sun_azimuth_difference < best_overall_difference:
                 best_overall_difference = sun_azimuth_difference
-            if sun_hitting and (best_hit_difference is None or sun_azimuth_difference < best_hit_difference):
+            if sample_sun_hitting and (best_hit_difference is None or sun_azimuth_difference < best_hit_difference):
                 best_hit_difference = sun_azimuth_difference
+                sun_hitting = True
 
+        self._cover_pos_history_mgr.set_last_sun_hitting_state(self.entity_id, sun_hitting)
         if best_hit_difference is not None:
             return True, best_hit_difference
 
@@ -745,12 +883,6 @@ class CoverAutomation:
         if diff > 180:
             diff = 360 - diff
         return diff
-
-    @staticmethod
-    def _calculate_signed_angle_difference(angle1: float, angle2: float) -> float:
-        """Calculate signed angle difference in degrees within the range [-180, 180)."""
-
-        return (angle1 - angle2 + 180) % 360 - 180
 
     #
     # _calculate_desired_position
@@ -804,21 +936,15 @@ class CoverAutomation:
                 max_closure_limit = self._get_cover_closure_limit(get_max=True)
                 desired_pos = max(const.COVER_POS_FULLY_CLOSED, max_closure_limit)
                 target_pre_closure_pos = desired_pos
-                if target_pre_closure_pos >= current_pos:
+                if sensor_data.pre_closing and target_pre_closure_pos >= current_pos:
                     desired_pos = current_pos
-                    if sensor_data.pre_closing and target_pre_closure_pos == current_pos:
+                    if target_pre_closure_pos == current_pos:
                         desired_pos_friendly_name = "keeping current position because it is already at the pre-closure position"
-                    elif sensor_data.pre_closing:
+                    else:
                         desired_pos_friendly_name = (
                             "keeping current position because it is already more closed than the pre-closure position"
                         )
-                    elif target_pre_closure_pos == current_pos:
-                        desired_pos_friendly_name = "keeping current position because it is already at the heat protection position"
-                    else:
-                        desired_pos_friendly_name = (
-                            "keeping current position because it is already more closed than the heat protection position"
-                        )
-                    movement_reason = None if sensor_data.pre_closing else CoverMovementReason.CLOSING_HEAT_PROTECTION
+                    movement_reason = None
                 else:
                     desired_pos_friendly_name = (
                         "pre-closing for heat protection" if sensor_data.pre_closing else "closing for heat protection"
@@ -1275,16 +1401,10 @@ class CoverAutomation:
             move_msg = "already at target position"
             new_pos = current_pos
         else:
-            try:
-                new_pos = await self._ha_interface.set_cover_position(self.entity_id, target_pos, features)
-            except Exception as err:
-                self._logger.error(f"[{self.entity_id}] Failed to enforce lock position: {err}")
-                cover_state.pos_target_desired = target_pos
-                cover_state.pos_target_final = current_pos
-                return
-
+            # Move the cover to the target position
             cover_moved = True
             move_msg = "moving to target position"
+            new_pos = await self._ha_interface.set_cover_position(self.entity_id, target_pos, features)
             self._record_recent_automation_action(new_pos)
 
         # Log and store position

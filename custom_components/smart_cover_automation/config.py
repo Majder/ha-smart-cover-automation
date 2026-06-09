@@ -18,8 +18,11 @@ from custom_components.smart_cover_automation.const import (
     COVER_SFX_WEATHER_HOT_EXTERNAL_CONTROL,
     HA_OPTIONS,
     LEGACY_OPTION_KEY_TEMPERATURE_THRESHOLD,
+    LEGACY_OPTION_KEY_SUN_AZIMUTH_TOLERANCE,
     NUMBER_KEY_DAILY_MAX_TEMPERATURE_THRESHOLD,
     NUMBER_KEY_DAILY_MIN_TEMPERATURE_THRESHOLD,
+    NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_END,
+    NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_START,
     NUMBER_KEY_TILT_EXTERNAL_VALUE_DAY,
     NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT,
     SWITCH_KEY_WEATHER_HOT_EXTERNAL_CONTROL,
@@ -99,8 +102,12 @@ class ConfKeys(StrEnum):
     DAILY_MIN_TEMPERATURE_THRESHOLD = (
         "daily_min_temperature_threshold"  # Daily low temperature threshold at which heat protection can activate (°C).
     )
-    SUN_AZIMUTH_TOLERANCE = "sun_azimuth_tolerance"  # Max angle difference (°) to consider sun hitting.
+    SUN_AZIMUTH_TOLERANCE = "sun_azimuth_tolerance"  # Legacy single sun azimuth tolerance (°).
+    SUN_AZIMUTH_TOLERANCE_START = "sun_azimuth_tolerance_start"  # Global: max angle diff (°) from cover direction for sun to start hitting.
+    SUN_AZIMUTH_TOLERANCE_END = "sun_azimuth_tolerance_end"  # Global: max angle diff (°) from cover direction until sun stops hitting.
     SUN_ELEVATION_THRESHOLD = "sun_elevation_threshold"  # Min sun elevation to act (degrees).
+    SUN_ELEVATION_MAX = "sun_elevation_max"  # Max sun elevation above which the overhang blocks sunlight (degrees).
+    SUN_ELEVATION_MAX_HYSTERESIS = "sun_elevation_max_hysteresis"  # Hysteresis angle (degrees); covers open only above elevation_max + hysteresis (0 = disabled).
     TILT_MIN_CHANGE_DELTA = "tilt_min_change_delta"  # Minimum tilt change (%) to actually send a service call.
     TILT_OPEN_TO_COVER_OPEN_DELAY = (
         "tilt_open_to_cover_open_delay"  # Delay stored in minutes between opening tilt and reopening the cover in day auto mode.
@@ -114,6 +121,7 @@ class ConfKeys(StrEnum):
     TILT_SLAT_OVERLAP_RATIO = "tilt_slat_overlap_ratio"  # Slat spacing/width ratio (d/L) for Auto tilt calculation.
     VERBOSE_LOGGING = "verbose_logging"  # Enable DEBUG logs for this entry.
     WEATHER_ENTITY_ID = "weather_entity_id"  # Weather entity_id.
+    WEATHER_HOT_CUTOVER_TIME = "weather_hot_cutover_time"  # Time of day to switch max-temperature checks to next day's forecast.
 
 
 class _Converters:
@@ -262,8 +270,12 @@ CONF_SPECS: dict[ConfKeys, _ConfSpec[Any]] = {
     ConfKeys.SIMULATION_MODE: _ConfSpec(default=False, converter=_Converters.to_bool, runtime_configurable=True),
     ConfKeys.DAILY_MAX_TEMPERATURE_THRESHOLD: _ConfSpec(default=24.0, converter=_Converters.to_float, runtime_configurable=True),
     ConfKeys.DAILY_MIN_TEMPERATURE_THRESHOLD: _ConfSpec(default=13.0, converter=_Converters.to_float, runtime_configurable=True),
-    ConfKeys.SUN_AZIMUTH_TOLERANCE: _ConfSpec(default=60, converter=_Converters.to_int, runtime_configurable=True),
+    ConfKeys.SUN_AZIMUTH_TOLERANCE: _ConfSpec(default=60, converter=_Converters.to_int),
+    ConfKeys.SUN_AZIMUTH_TOLERANCE_START: _ConfSpec(default=60, converter=_Converters.to_int, runtime_configurable=True),
+    ConfKeys.SUN_AZIMUTH_TOLERANCE_END: _ConfSpec(default=60, converter=_Converters.to_int, runtime_configurable=True),
     ConfKeys.SUN_ELEVATION_THRESHOLD: _ConfSpec(default=0.0, converter=_Converters.to_float, runtime_configurable=True),
+    ConfKeys.SUN_ELEVATION_MAX: _ConfSpec(default=90, converter=_Converters.to_int, runtime_configurable=True),
+    ConfKeys.SUN_ELEVATION_MAX_HYSTERESIS: _ConfSpec(default=0, converter=_Converters.to_int, runtime_configurable=True),
     ConfKeys.TILT_MIN_CHANGE_DELTA: _ConfSpec(default=5, converter=_Converters.to_int),
     ConfKeys.TILT_OPEN_TO_COVER_OPEN_DELAY: _ConfSpec(default=0, converter=_Converters.to_int),
     ConfKeys.TILT_VERTICAL_POSITION: _ConfSpec(default=0, converter=_Converters.to_int),
@@ -275,6 +287,7 @@ CONF_SPECS: dict[ConfKeys, _ConfSpec[Any]] = {
     ConfKeys.TILT_SLAT_OVERLAP_RATIO: _ConfSpec(default=0.9, converter=_Converters.to_float),
     ConfKeys.VERBOSE_LOGGING: _ConfSpec(default=False, converter=_Converters.to_bool, runtime_configurable=True),
     ConfKeys.WEATHER_ENTITY_ID: _ConfSpec(default="", converter=_Converters.to_str),
+    ConfKeys.WEATHER_HOT_CUTOVER_TIME: _ConfSpec(default=time(16, 0, 0), converter=_Converters.to_time),
 }
 
 # Public API of this module (keep helper class internal)
@@ -318,6 +331,8 @@ def get_runtime_configurable_keys() -> set[str]:
     keys.add(NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT)
     keys.add(NUMBER_KEY_DAILY_MAX_TEMPERATURE_THRESHOLD)
     keys.add(NUMBER_KEY_DAILY_MIN_TEMPERATURE_THRESHOLD)
+    keys.add(NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_START)
+    keys.add(NUMBER_KEY_SUN_AZIMUTH_TOLERANCE_END)
     keys.add(TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_START)
     keys.add(TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_END)
     keys.add(TIME_KEY_EVENING_CLOSURE_EXTERNAL_TIME)
@@ -363,6 +378,7 @@ _VALUE_TO_FIELD: dict[str, str] = {
     "close_covers_after_sunset_keep_closed": "evening_closure_keep_closed",
     "morning_opening_mode": "morning_opening_mode",
     "morning_opening_time": "morning_opening_time",
+    "sun_azimuth_tolerance": "sun_azimuth_tolerance_start",
 }
 
 
@@ -406,8 +422,11 @@ class ResolvedConfig:
     simulation_mode: bool
     daily_max_temperature_threshold: float
     daily_min_temperature_threshold: float
-    sun_azimuth_tolerance: int
+    sun_azimuth_tolerance_start: int
+    sun_azimuth_tolerance_end: int
     sun_elevation_threshold: float
+    sun_elevation_max: int
+    sun_elevation_max_hysteresis: int
     tilt_min_change_delta: int
     tilt_open_to_cover_open_delay: int
     tilt_vertical_position: int
@@ -419,10 +438,17 @@ class ResolvedConfig:
     tilt_slat_overlap_ratio: float
     verbose_logging: bool
     weather_entity_id: str
+    weather_hot_cutover_time: time
 
     def get(self, key: ConfKeys) -> Any:
         # Generic access via mapping (field names may differ from ConfKeys values)
         return getattr(self, _field_name(key))
+
+    @property
+    def sun_azimuth_tolerance(self) -> int:
+        """Legacy compatibility accessor for the original single tolerance setting."""
+
+        return self.sun_azimuth_tolerance_start
 
     def as_enum_dict(self) -> dict[ConfKeys, Any]:
         # Build dict without hard-coded names
@@ -466,6 +492,8 @@ def resolve(options: Mapping[str, Any] | None) -> ResolvedConfig:
         spec = CONF_SPECS[key]
         if key.value in options:
             raw = options[key.value]
+        elif key in (ConfKeys.SUN_AZIMUTH_TOLERANCE_START, ConfKeys.SUN_AZIMUTH_TOLERANCE_END) and LEGACY_OPTION_KEY_SUN_AZIMUTH_TOLERANCE in options:
+            raw = options[LEGACY_OPTION_KEY_SUN_AZIMUTH_TOLERANCE]
         elif key is ConfKeys.DAILY_MAX_TEMPERATURE_THRESHOLD and LEGACY_OPTION_KEY_TEMPERATURE_THRESHOLD in options:
             # Backward-compatibility for entries that have not been rewritten by
             # _async_migrate_temperature_threshold_keys yet. Remove this fallback
