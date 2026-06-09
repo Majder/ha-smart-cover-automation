@@ -62,7 +62,7 @@ Specify each cover's azimuth (direction). This is necessary so that the integrat
 
 There are several online tools available to measure azimuth. [OpenStreetMap Compass](https://osmcompass.com/) works well, as does [SunCalc](https://www.suncalc.org/). You can find instructions for both on [this website](https://doc.forecast.solar/find_your_azimuth). Your phone's compass app might also be accurate enough.
 
-*New in 4.2:*
+*New in 4.5:*
 
 ### Sun Azimuth Window
 
@@ -76,6 +76,11 @@ For example, if a south-facing window receives direct sunlight when the sun is b
 For covers near north, the window can wrap around 0°/360°. For instance, start=350 and end=30 means the sun hits the window when its azimuth is either ≥ 350° or ≤ 30°.
 
 Leave both fields empty to use the global angle-tolerance setting instead (configurable on the device page of the integration instance).
+
+The following settings are available for each cover:
+
+- **Start:** Azimuth tolerance when the sun starts hitting the window (looking out, the angle to the left).
+- **End:** Azimuth tolerance when the sun stops hitting the window (looking out, the angle to the right).
 
 ## Step 3: Max/Min Positions (Optional)
 
@@ -166,6 +171,15 @@ Blocked time range settings:
 - **Disable automation in time range:** Enable or disable the blocked time range function.
 - **Disable from:** Start time of the time period in which the automation should be inactive.
 - **Disable until:** End time of the time period in which the automation should be inactive.
+
+*New in 4.6:*
+
+- **Blocked time range: mode:** Specifies the blocked time range:
+  - **Absolute time:** A fixed time of day.
+  - **External:** Set the blocked time range from your own automation.
+    - The integration creates two additional entities that receive the start and end of the blocked time range.
+    - These entities are fully managed, i.e., they're deleted again if the mode is changed away from `external`.
+    - If either of these entities has no valid time, no time range is blocked.
 
 *New in 4.3:*
 

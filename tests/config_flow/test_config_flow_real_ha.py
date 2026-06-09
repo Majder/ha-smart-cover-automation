@@ -26,13 +26,13 @@ from custom_components.smart_cover_automation import DOMAIN
 from custom_components.smart_cover_automation.config import ConfKeys
 from custom_components.smart_cover_automation.const import (
     COVER_SFX_AZIMUTH,
-    COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS,
     COVER_SFX_SUN_AZIMUTH_TOLERANCE_END,
     COVER_SFX_SUN_AZIMUTH_TOLERANCE_START,
     ERROR_INVALID_INTEGER,
     INTEGRATION_NAME,
     STEP_2_SECTION_AZIMUTH,
-    STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE,
+    STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END,
+    STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START,
     TiltMode,
 )
 
@@ -97,10 +97,22 @@ def _as_dict(result: ConfigFlowResult) -> dict[str, Any]:
     return cast(dict[str, Any], result)
 
 
+def _cover_label(entity_id: str) -> str:
+    """Return the options-flow display label for a cover entity used in tests."""
+
+    object_id = entity_id.split(".", 1)[-1]
+    return object_id.replace("_", " ").strip().title()
+
+
 def _step_2_azimuth_input(azimuths: dict[str, float]) -> dict[str, Any]:
     """Wrap step-2 azimuth data in the options-flow section payload."""
 
-    return {STEP_2_SECTION_AZIMUTH: azimuths}
+    return {
+        STEP_2_SECTION_AZIMUTH: {
+            _cover_label(entity_id[: -len(f"_{COVER_SFX_AZIMUTH}")]) if entity_id.endswith(f"_{COVER_SFX_AZIMUTH}") else entity_id: value
+            for entity_id, value in azimuths.items()
+        }
+    }
 
 
 #
@@ -451,7 +463,7 @@ class TestOptionsFlow:
         self,
         hass: HomeAssistant,
     ) -> None:
-        """Invalid tolerance text should keep the user on step 2 with an error."""
+        """Invalid start/end tolerance text should keep the user on step 2 with an error."""
 
         _register_cover_entity(hass, TEST_COVER_1)
         _register_weather_entity(hass)
@@ -479,11 +491,10 @@ class TestOptionsFlow:
                 result["flow_id"],
                 user_input={
                     STEP_2_SECTION_AZIMUTH: {
-                        f"{TEST_COVER_1}_{COVER_SFX_AZIMUTH}": 180,
+                        "Flow Test Cover 1": 180,
                     },
-                    STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
-                        f"{TEST_COVER_1}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "75x",
-                        f"{TEST_COVER_1}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": "35",
+                    STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: {
+                        "Flow Test Cover 1": "75x",
                     },
                 },
             )
@@ -493,16 +504,13 @@ class TestOptionsFlow:
         assert result["step_id"] == "2"
         assert result["errors"] == {
             "base": ERROR_INVALID_INTEGER,
-            f"{TEST_COVER_1}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": ERROR_INVALID_INTEGER,
         }
 
         schema = result["data_schema"].schema
-        section_key = next(key for key in schema if getattr(key, "schema", None) == STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE)
+        section_key = next(key for key in schema if getattr(key, "schema", None) == STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START)
         section_schema = schema[section_key].schema.schema
-        field_key = next(
-            key for key in section_schema if getattr(key, "schema", None) == f"{TEST_COVER_1}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"
-        )
-        assert field_key.description == {"suggested_value": "75x"}
+        field_key = next(key for key in section_schema if getattr(key, "schema", None) == "Flow Test Cover 1")
+        assert field_key.description == {"name": "Flow Test Cover 1", "suggested_value": "75x"}
 
     async def test_options_flow_step_2_assigns_default_azimuth_to_new_cover_when_section_is_omitted(
         self,
@@ -536,10 +544,11 @@ class TestOptionsFlow:
             await hass.config_entries.options.async_configure(
                 result["flow_id"],
                 user_input={
-                    STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
-                        f"{TEST_COVER_2}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "25",
-                        f"{TEST_COVER_2}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": "35",
-                        f"{TEST_COVER_2}_{COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}": "8",
+                    STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: {
+                        _cover_label(TEST_COVER_2): "25",
+                    },
+                    STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: {
+                        _cover_label(TEST_COVER_2): "35",
                     },
                 },
             )
@@ -575,7 +584,6 @@ class TestOptionsFlow:
         assert entry.options[f"{TEST_COVER_2}_{COVER_SFX_AZIMUTH}"] == 180
         assert entry.options[f"{TEST_COVER_2}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"] == 25
         assert entry.options[f"{TEST_COVER_2}_{COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"] == 35
-        assert entry.options[f"{TEST_COVER_2}_{COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}"] == 8
 
     # ------------------------------------------------------------------
     # 3.3  Options flow step 1 validation — invalid cover entity

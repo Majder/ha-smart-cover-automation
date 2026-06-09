@@ -30,13 +30,16 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Étape 2 sur 6",
-                "description": "Configurez l'**azimut** (direction) pour chaque volet.\n\nVous pouvez également définir des **positions d'azimut solaire absolues** (début/fin) optionnelles par volet qui définissent quand le soleil frappe une fenêtre donnée : le volet se ferme lorsque le soleil atteint l'azimut de début et se rouvre lorsqu'il dépasse l'azimut de fin. Laissez les deux champs vides pour utiliser à la place le réglage global de tolérance angulaire.\n\n(0°=Nord, 90°=Est, 180°=Sud, 270°=Ouest)",
+                "description": "Configurez l'**azimut** (direction) pour chaque volet. Vous pouvez également ajouter des valeurs de début et de fin facultatives de **tolérance de l'azimut solaire** par volet qui remplacent le réglage global de tolérance de l'azimut solaire configurable sur la page de l'appareil de cette instance d'intégration.\n\n(0°=Nord, 90°=Est, 180°=Sud, 270°=Ouest)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Azimut du volet (obligatoire)"
                     },
-                    "section_sun_azimuth_tolerance": {
-                        "name": "Fenêtre d'azimut solaire — positions absolues (facultatif)"
+                    "section_sun_azimuth_tolerance_start": {
+                        "name": "Début de la tolérance de l'azimut solaire (facultatif)"
+                    },
+                    "section_sun_azimuth_tolerance_end": {
+                        "name": "Fin de la tolérance de l'azimut solaire (facultatif)"
                     }
                 }
             },
@@ -127,14 +130,16 @@
                         "name": "Plage horaire bloquée",
                         "data": {
                             "automation_disabled_time_range": "Désactiver l'automatisation sur une plage horaire :",
+                            "automation_disabled_time_range_mode": "Plage horaire bloquée : mode :",
                             "automation_disabled_time_range_start": "Désactiver à partir de :",
                             "automation_disabled_time_range_end": "Désactiver jusqu'à :",
                             "automation_disabled_time_range_pre_close_enabled": "Pré-fermeture pour la protection thermique du lendemain matin :"
                         },
                         "data_description": {
                             "automation_disabled_time_range": "Lorsque cette option est activée, l'automatisation ne fonctionne pas pendant la plage horaire indiquée.",
-                            "automation_disabled_time_range_start": "Heure de début de la période pendant laquelle l'automatisation doit être désactivée.",
-                            "automation_disabled_time_range_end": "Heure de fin de la période pendant laquelle l'automatisation doit être désactivée.",
+                            "automation_disabled_time_range_mode": "Choisissez si la plage bloquée utilise des heures absolues configurées ou est fournie par des entités externes.",
+                            "automation_disabled_time_range_start": "Heure de début de la période pendant laquelle l'automatisation doit être désactivée. Ignorée en mode externe.",
+                            "automation_disabled_time_range_end": "Heure de fin de la période pendant laquelle l'automatisation doit être désactivée. Ignorée en mode externe.",
                             "automation_disabled_time_range_pre_close_enabled": "Lorsque cette option est activée, les protections sont pré-fermées au début de la plage bloquée si le lendemain matin doit être chaud et ensoleillé."
                         }
                     },
@@ -220,7 +225,8 @@
             "automation_disabled_time_range": {
                 "name": "Plage horaire : désactivée",
                 "state": {
-                    "off": "Désactivé"
+                    "off": "Désactivé",
+                    "external": "Externe"
                 }
             },
             "close_covers_after_sunset_delay": {
@@ -249,6 +255,12 @@
             }
         },
         "time": {
+            "automation_disabled_time_range_external_start": {
+                "name": "Plage bloquée : heure externe de début"
+            },
+            "automation_disabled_time_range_external_end": {
+                "name": "Plage bloquée : heure externe de fin"
+            },
             "evening_closure_external_time": {
                 "name": "Fermeture du soir : heure externe"
             },
@@ -271,12 +283,6 @@
             },
             "sun_elevation_threshold": {
                 "name": "Élévation minimale du soleil"
-            },
-            "sun_elevation_max": {
-                "name": "Élévation solaire maximale (auvent)"
-            },
-            "sun_elevation_max_hysteresis": {
-                "name": "Auvent : hystérésis (prévention oscillation)"
             },
             "tilt_external_value_day": {
                 "name": "Angle d'inclinaison : contrôle externe (jour)"
@@ -428,6 +434,12 @@
                 "relative_to_sunrise": "Relative au lever du soleil",
                 "fixed_time": "Heure fixe",
                 "external": "Externe (heure fournie par une entité)"
+            }
+        },
+        "blocked_time_range_mode": {
+            "options": {
+                "fixed_time": "Heure absolue",
+                "external": "Externe (heures fournies par des entités)"
             }
         }
     }

@@ -30,13 +30,16 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Step 2 of 6",
-                "description": "Configure the **azimuth** (direction) for each cover.\n\nYou can also set optional per-cover **sun azimuth start/end** values. These are **absolute sun azimuth positions** (0–359°) that define when the sun hits a specific window: the cover darkens once the sun enters the start azimuth and reopens once it leaves the end azimuth. Leave both fields empty to use the global angle-tolerance setting instead.\n\n(0°=North, 90°=East, 180°=South, 270°=West)",
+                "description": "Configure the **azimuth** (direction) for each cover. You can also add optional per-cover **sun azimuth tolerance** start and end values that override the global azimuth tolerance setting configurable on the device page of the integration instance.\n\n(0°=North, 90°=East, 180°=South, 270°=West)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Cover azimuth (required)"
                     },
-                    "section_sun_azimuth_tolerance": {
-                        "name": "Sun azimuth window — absolute positions (optional)"
+                    "section_sun_azimuth_tolerance_start": {
+                        "name": "Sun azimuth tolerance start (optional)"
+                    },
+                    "section_sun_azimuth_tolerance_end": {
+                        "name": "Sun azimuth tolerance end (optional)"
                     }
                 }
             },
@@ -127,14 +130,16 @@
                         "name": "Blocked time range",
                         "data": {
                             "automation_disabled_time_range": "Disable automation in time range:",
+                            "automation_disabled_time_range_mode": "Blocked time range: mode:",
                             "automation_disabled_time_range_start": "Disable from:",
                             "automation_disabled_time_range_end": "Disable until:",
                             "automation_disabled_time_range_pre_close_enabled": "Pre-close for next-morning heat protection:"
                         },
                         "data_description": {
                             "automation_disabled_time_range": "When enabled, the automation will not run during the specified time range.",
-                            "automation_disabled_time_range_start": "Start time of the period when the automation should be disabled.",
-                            "automation_disabled_time_range_end": "End time of the period when the automation should be disabled.",
+                            "automation_disabled_time_range_mode": "Choose whether the blocked time range uses absolute configured times or is supplied by external entities.",
+                            "automation_disabled_time_range_start": "Start time of the period when the automation should be disabled. Ignored in external mode.",
+                            "automation_disabled_time_range_end": "End time of the period when the automation should be disabled. Ignored in external mode.",
                             "automation_disabled_time_range_pre_close_enabled": "When enabled, covers are pre-closed at the beginning of the blocked time range if the next morning is forecast to be hot and sunny."
                         }
                     },
@@ -220,7 +225,8 @@
             "automation_disabled_time_range": {
                 "name": "Time range: disabled",
                 "state": {
-                    "off": "Off"
+                    "off": "Off",
+                    "external": "External"
                 }
             },
             "close_covers_after_sunset_delay": {
@@ -249,6 +255,12 @@
             }
         },
         "time": {
+            "automation_disabled_time_range_external_start": {
+                "name": "Blocked time range: external start"
+            },
+            "automation_disabled_time_range_external_end": {
+                "name": "Blocked time range: external end"
+            },
             "evening_closure_external_time": {
                 "name": "Evening closure: external time"
             },
@@ -269,20 +281,8 @@
             "sun_azimuth_tolerance": {
                 "name": "Sun azimuth tolerance"
             },
-            "sun_azimuth_tolerance_start": {
-                "name": "Sun azimuth: tolerance (entering)"
-            },
-            "sun_azimuth_tolerance_end": {
-                "name": "Sun azimuth: tolerance (leaving)"
-            },
             "sun_elevation_threshold": {
                 "name": "Minimum sun elevation"
-            },
-            "sun_elevation_max": {
-                "name": "Maximum sun elevation (overhang)"
-            },
-            "sun_elevation_max_hysteresis": {
-                "name": "Overhang: hysteresis (flap-prevention)"
             },
             "tilt_external_value_day": {
                 "name": "Tilt angle: external control (day)"
@@ -434,6 +434,12 @@
                 "relative_to_sunrise": "Relative to sunrise",
                 "fixed_time": "Absolute time",
                 "external": "External (time supplied via entity)"
+            }
+        },
+        "blocked_time_range_mode": {
+            "options": {
+                "fixed_time": "Absolute time",
+                "external": "External (times supplied via entities)"
             }
         }
     }

@@ -797,7 +797,7 @@ class CoverAutomation:
             sun_hitting = False
 
         if update_state:
-            self._cover_pos_history_mgr.dset_last_sun_hitting_state(self.entity_id, sun_hitting)
+            self._cover_pos_history_mgr.set_last_sun_hitting_state(self.entity_id, sun_hitting)
 
         return sun_hitting, sun_azimuth_difference
 

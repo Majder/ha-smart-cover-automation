@@ -30,13 +30,16 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Stap 2 van 6",
-                "description": "Configureer de **azimut** (richting) voor elk rolluik.\n\nU kunt ook optionele **absolute zonazimutposities** (start/einde) per rolluik opgeven die bepalen wanneer de zon op een specifiek raam schijnt: het rolluik gaat dicht wanneer de zon de startazimut bereikt en gaat open wanneer de zon de eindazimut passeert. Laat beide velden leeg om de globale instelling voor hoektoleratie te gebruiken.\n\n(0°=Noord, 90°=Oost, 180°=Zuid, 270°=West)",
+                "description": "Configureer de **azimut** (richting) voor elk rolluik. U kunt ook optionele begin- en eindwaarden voor **tolerantie voor zonazimut** per rolluik toevoegen die de globale instelling voor tolerantie voor zonazimut overschrijven, configureerbaar op de apparaats-pagina van deze integratie-instantie.\n\n(0°=Noord, 90°=Oost, 180°=Zuid, 270°=West)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Rolluikazimut (verplicht)"
                     },
-                    "section_sun_azimuth_tolerance": {
-                        "name": "Zonazimutvenster — absolute posities (optioneel)"
+                    "section_sun_azimuth_tolerance_start": {
+                        "name": "Start van tolerantie voor zonazimut (optioneel)"
+                    },
+                    "section_sun_azimuth_tolerance_end": {
+                        "name": "Einde van tolerantie voor zonazimut (optioneel)"
                     }
                 }
             },
@@ -127,14 +130,16 @@
                         "name": "Geblokkeerd tijdvenster",
                         "data": {
                             "automation_disabled_time_range": "Automatisering uitschakelen binnen tijdvenster:",
+                            "automation_disabled_time_range_mode": "Geblokkeerd tijdvenster: modus:",
                             "automation_disabled_time_range_start": "Uitschakelen vanaf:",
                             "automation_disabled_time_range_end": "Uitschakelen tot:",
                             "automation_disabled_time_range_pre_close_enabled": "Vooraf sluiten voor hittebescherming morgenochtend:"
                         },
                         "data_description": {
                             "automation_disabled_time_range": "Wanneer ingeschakeld, draait de automatisering niet tijdens het opgegeven tijdvenster.",
-                            "automation_disabled_time_range_start": "Starttijd van de periode waarin de automatisering moet zijn uitgeschakeld.",
-                            "automation_disabled_time_range_end": "Eindtijd van de periode waarin de automatisering moet zijn uitgeschakeld.",
+                            "automation_disabled_time_range_mode": "Kies of het geblokkeerde tijdvenster geconfigureerde absolute tijden gebruikt of door externe entiteiten wordt geleverd.",
+                            "automation_disabled_time_range_start": "Starttijd van de periode waarin de automatisering moet zijn uitgeschakeld. Wordt genegeerd in externe modus.",
+                            "automation_disabled_time_range_end": "Eindtijd van de periode waarin de automatisering moet zijn uitgeschakeld. Wordt genegeerd in externe modus.",
                             "automation_disabled_time_range_pre_close_enabled": "Wanneer ingeschakeld, worden afdekkingen aan het begin van het geblokkeerde tijdvenster vooraf gesloten als de volgende ochtend heet en zonnig wordt voorspeld."
                         }
                     },
@@ -220,7 +225,8 @@
             "automation_disabled_time_range": {
                 "name": "Tijdvenster: uitgeschakeld",
                 "state": {
-                    "off": "Uit"
+                    "off": "Uit",
+                    "external": "Extern"
                 }
             },
             "close_covers_after_sunset_delay": {
@@ -249,6 +255,12 @@
             }
         },
         "time": {
+            "automation_disabled_time_range_external_start": {
+                "name": "Geblokkeerd tijdvenster: externe starttijd"
+            },
+            "automation_disabled_time_range_external_end": {
+                "name": "Geblokkeerd tijdvenster: externe eindtijd"
+            },
             "evening_closure_external_time": {
                 "name": "Avondsluiting: externe tijd"
             },
@@ -271,12 +283,6 @@
             },
             "sun_elevation_threshold": {
                 "name": "Minimale zonshoogte"
-            },
-            "sun_elevation_max": {
-                "name": "Maximale zonshoogte (overstek)"
-            },
-            "sun_elevation_max_hysteresis": {
-                "name": "Overstek: hysterese (vlap-preventie)"
             },
             "tilt_external_value_day": {
                 "name": "Kantelhoek: externe besturing (dag)"
@@ -428,6 +434,12 @@
                 "relative_to_sunrise": "Relatief ten opzichte van zonsopgang",
                 "fixed_time": "Vast tijdstip",
                 "external": "Extern (tijd aangeleverd door een entiteit)"
+            }
+        },
+        "blocked_time_range_mode": {
+            "options": {
+                "fixed_time": "Absolute tijd",
+                "external": "Extern (tijden aangeleverd door entiteiten)"
             }
         }
     }

@@ -80,9 +80,13 @@ DEFAULT_COVER_AZIMUTH: Final[int] = 180
 
 # Per-cover configuration key suffixes
 COVER_SFX_AZIMUTH: Final[str] = "cover_azimuth"  # Cover/window azimuth (°)
-COVER_SFX_SUN_AZIMUTH_TOLERANCE: Final[str] = "cover_sun_azimuth_tolerance"  # Legacy per-cover override for sun azimuth tolerance (°).
-COVER_SFX_SUN_AZIMUTH_TOLERANCE_START: Final[str] = "cover_sun_azimuth_tolerance_start"  # Per-cover override for sun entering the window (°).
-COVER_SFX_SUN_AZIMUTH_TOLERANCE_END: Final[str] = "cover_sun_azimuth_tolerance_end"  # Per-cover override for sun leaving the window (°).
+COVER_SFX_SUN_AZIMUTH_TOLERANCE: Final[str] = "cover_sun_azimuth_tolerance"  # Per-cover override for sun azimuth tolerance (°).
+COVER_SFX_SUN_AZIMUTH_TOLERANCE_START: Final[str] = (
+    "cover_sun_azimuth_tolerance_start"  # Per-cover override for when sun starts hitting the cover (° before cover azimuth).
+)
+COVER_SFX_SUN_AZIMUTH_TOLERANCE_END: Final[str] = (
+    "cover_sun_azimuth_tolerance_end"  # Per-cover override for when sun stops hitting the cover (° after cover azimuth).
+)
 COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS: Final[str] = (
     "cover_sun_elevation_max_hysteresis"  # Per-cover override for hysteresis around max sun elevation (°).
 )
@@ -135,6 +139,16 @@ class MorningOpeningMode(StrEnum):
     RELATIVE_TO_SUNRISE = "relative_to_sunrise"  # Open relative to sunrise
     FIXED_TIME = "fixed_time"  # Open at a fixed time of day
     EXTERNAL = "external"  # Open at a time supplied via entity
+
+
+#
+# BlockedTimeRangeMode
+#
+class BlockedTimeRangeMode(StrEnum):
+    """Blocked time range timing mode."""
+
+    FIXED_TIME = "fixed_time"  # Use the configured start/end times from options
+    EXTERNAL = "external"  # Use runtime start/end times supplied via entities
 
 
 #
@@ -208,6 +222,12 @@ TIME_KEY_MORNING_OPENING_EXTERNAL_TIME: Final[str] = (
 TIME_KEY_EVENING_CLOSURE_EXTERNAL_TIME: Final[str] = (
     "evening_closure_external_time"  # Key for the global external evening closure time entity
 )
+TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_START: Final[str] = (
+    "automation_disabled_time_range_external_start"  # Key for the global external blocked-time start entity
+)
+TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_END: Final[str] = (
+    "automation_disabled_time_range_external_end"  # Key for the global external blocked-time end entity
+)
 SENSOR_KEY_SUN_AZIMUTH: Final[str] = "sun_azimuth"  # Key for the sun azimuth sensor entity
 SENSOR_KEY_SUN_ELEVATION: Final[str] = "sun_elevation"  # Key for the sun sun_elevation sensor entity
 SENSOR_KEY_TEMP_CURRENT_MAX: Final[str] = "temp_current_max"  # Key for the current maximum temperature sensor entity
@@ -235,6 +255,8 @@ ERROR_NO_COVERS: Final[str] = "no_covers"
 ERROR_NO_WEATHER_ENTITY: Final[str] = "no_weather_entity"
 STEP_2_SECTION_AZIMUTH: Final[str] = "section_azimuth"
 STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: Final[str] = "section_sun_azimuth_tolerance"
+STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: Final[str] = "section_sun_azimuth_tolerance_start"
+STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: Final[str] = "section_sun_azimuth_tolerance_end"
 STEP_3_SECTION_MAX_CLOSURE: Final[str] = "section_max_closure"
 STEP_3_SECTION_MIN_CLOSURE: Final[str] = "section_min_closure"
 STEP_3_SECTION_EVENING_MAX_CLOSURE: Final[str] = "section_evening_max_closure"

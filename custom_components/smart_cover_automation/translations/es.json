@@ -30,13 +30,16 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Paso 2 de 6",
-                "description": "Configure el **azimut** (dirección) de cada persiana.\n\nTambién puede indicar **posiciones de azimut solar absolutas** (inicio/fin) opcionales por persiana, que definen cuándo el sol incide sobre una ventana concreta: la persiana se oscurece cuando el sol alcanza el azimut de inicio y se abre de nuevo cuando supera el azimut de fin. Deje ambos campos vacíos para usar la configuración global de tolerancia de ángulo en su lugar.\n\n(0°=Norte, 90°=Este, 180°=Sur, 270°=Oeste)",
+                "description": "Configure el **azimut** (dirección) de cada persiana. También puede añadir valores opcionales de inicio y fin de **tolerancia de azimut solar** por persiana que sobrescriben la configuración global de tolerancia de azimut solar, configurable en la página del dispositivo de esta instancia de integración.\n\n(0°=Norte, 90°=Este, 180°=Sur, 270°=Oeste)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Azimut de la persiana (obligatorio)"
                     },
-                    "section_sun_azimuth_tolerance": {
-                        "name": "Ventana de azimut solar — posiciones absolutas (opcional)"
+                    "section_sun_azimuth_tolerance_start": {
+                        "name": "Inicio de tolerancia de azimut solar (opcional)"
+                    },
+                    "section_sun_azimuth_tolerance_end": {
+                        "name": "Fin de tolerancia de azimut solar (opcional)"
                     }
                 }
             },
@@ -127,14 +130,16 @@
                         "name": "Intervalo de tiempo bloqueado",
                         "data": {
                             "automation_disabled_time_range": "Desactivar la automatización en un intervalo de tiempo:",
+                            "automation_disabled_time_range_mode": "Intervalo bloqueado: modo:",
                             "automation_disabled_time_range_start": "Desactivar desde:",
                             "automation_disabled_time_range_end": "Desactivar hasta:",
                             "automation_disabled_time_range_pre_close_enabled": "Pre-cierre para la protección térmica de la mañana siguiente:"
                         },
                         "data_description": {
                             "automation_disabled_time_range": "Cuando está activada, la automatización no se ejecutará durante el intervalo especificado.",
-                            "automation_disabled_time_range_start": "Hora de inicio del período en el que la automatización debe estar desactivada.",
-                            "automation_disabled_time_range_end": "Hora de fin del período en el que la automatización debe estar desactivada.",
+                            "automation_disabled_time_range_mode": "Elija si el intervalo bloqueado usa horas absolutas configuradas o lo proporcionan entidades externas.",
+                            "automation_disabled_time_range_start": "Hora de inicio del período en el que la automatización debe estar desactivada. Se ignora en modo externo.",
+                            "automation_disabled_time_range_end": "Hora de fin del período en el que la automatización debe estar desactivada. Se ignora en modo externo.",
                             "automation_disabled_time_range_pre_close_enabled": "Cuando está activada, las cubiertas se pre-cierran al inicio del intervalo bloqueado si se prevé que la próxima mañana sea calurosa y soleada."
                         }
                     },
@@ -220,7 +225,8 @@
             "automation_disabled_time_range": {
                 "name": "Intervalo de tiempo: desactivado",
                 "state": {
-                    "off": "Desactivado"
+                    "off": "Desactivado",
+                    "external": "Externo"
                 }
             },
             "close_covers_after_sunset_delay": {
@@ -249,6 +255,12 @@
             }
         },
         "time": {
+            "automation_disabled_time_range_external_start": {
+                "name": "Intervalo bloqueado: hora externa de inicio"
+            },
+            "automation_disabled_time_range_external_end": {
+                "name": "Intervalo bloqueado: hora externa de fin"
+            },
             "evening_closure_external_time": {
                 "name": "Cierre al anochecer: hora externa"
             },
@@ -271,12 +283,6 @@
             },
             "sun_elevation_threshold": {
                 "name": "Elevación mínima del sol"
-            },
-            "sun_elevation_max": {
-                "name": "Elevación solar máxima (alero)"
-            },
-            "sun_elevation_max_hysteresis": {
-                "name": "Alero: histéresis (prevención de aleteo)"
             },
             "tilt_external_value_day": {
                 "name": "Ángulo de inclinación: control externo (día)"
@@ -428,6 +434,12 @@
                 "relative_to_sunrise": "Relativa al amanecer",
                 "fixed_time": "Hora fija del día",
                 "external": "Externo (hora proporcionada por una entidad)"
+            }
+        },
+        "blocked_time_range_mode": {
+            "options": {
+                "fixed_time": "Hora absoluta",
+                "external": "Externo (horas proporcionadas por entidades)"
             }
         }
     }

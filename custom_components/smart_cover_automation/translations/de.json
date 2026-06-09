@@ -30,13 +30,16 @@
             },
             "2": {
                 "title": "Smart Cover Automation - Schritt 2 von 6",
-                "description": "Konfigurieren Sie den **Azimut** (Richtung) für jeden Rollladen.\n\nSie können optional **absolute Sonnen-Azimut-Positionen** (Start/Ende) pro Rollladen angeben, die definieren, wann die Sonne auf ein bestimmtes Fenster scheint: Der Rollladen verdunkelt sich, wenn die Sonne den Start-Azimut erreicht, und öffnet sich, wenn die Sonne den End-Azimut verlässt. Lassen Sie beide Felder leer, um stattdessen die globale Winkel-Toleranz-Einstellung zu verwenden.\n\n(0°=Nord, 90°=Ost, 180°=Süd, 270°=West)",
+                "description": "Konfigurieren Sie den **Azimut** (Richtung) für jeden Rollladen. Optional können Sie auch **Start- und Endwerte der Sonnen-Azimut-Toleranz** pro Rollladen hinzufügen, die die globale Azimut-Toleranzeinstellung überschreiben, die auf der Geräteseite der Integrationsinstanz konfigurierbar ist.\n\n(0°=Nord, 90°=Ost, 180°=Süd, 270°=West)",
                 "sections": {
                     "section_azimuth": {
                         "name": "Rollladen-Azimut (erforderlich)"
                     },
-                    "section_sun_azimuth_tolerance": {
-                        "name": "Sonnen-Azimut-Fenster \u2014 absolute Positionen (optional)"
+                    "section_sun_azimuth_tolerance_start": {
+                        "name": "Sonnen-Azimut-Toleranz Start (optional)"
+                    },
+                    "section_sun_azimuth_tolerance_end": {
+                        "name": "Sonnen-Azimut-Toleranz Ende (optional)"
                     }
                 }
             },
@@ -127,14 +130,16 @@
                         "name": "Blockierter Zeitraum",
                         "data": {
                             "automation_disabled_time_range": "Automatisierung im Zeitraum deaktivieren:",
+                            "automation_disabled_time_range_mode": "Blockierter Zeitraum: Modus:",
                             "automation_disabled_time_range_start": "Deaktivieren ab:",
                             "automation_disabled_time_range_end": "Deaktivieren bis:",
                             "automation_disabled_time_range_pre_close_enabled": "Vorab schließen für Hitzeschutz am nächsten Morgen:"
                         },
                         "data_description": {
                             "automation_disabled_time_range": "Wenn aktiviert, läuft die Automatisierung im angegebenen Zeitraum nicht.",
-                            "automation_disabled_time_range_start": "Startzeit des Zeitraums, in dem die Automatisierung deaktiviert sein soll.",
-                            "automation_disabled_time_range_end": "Endzeit des Zeitraums, in dem die Automatisierung deaktiviert sein soll.",
+                            "automation_disabled_time_range_mode": "Wählen Sie, ob der blockierte Zeitraum feste absolute Uhrzeiten verwendet oder von externen Entitäten geliefert wird.",
+                            "automation_disabled_time_range_start": "Startzeit des Zeitraums, in dem die Automatisierung deaktiviert sein soll. Wird im externen Modus ignoriert.",
+                            "automation_disabled_time_range_end": "Endzeit des Zeitraums, in dem die Automatisierung deaktiviert sein soll. Wird im externen Modus ignoriert.",
                             "automation_disabled_time_range_pre_close_enabled": "Wenn aktiviert, werden Rollläden zu Beginn des blockierten Zeitraums vorab geschlossen, wenn der nächste Morgen heiß und sonnig vorhergesagt ist."
                         }
                     },
@@ -220,7 +225,8 @@
             "automation_disabled_time_range": {
                 "name": "Zeitraum: deaktiviert",
                 "state": {
-                    "off": "Aus"
+                    "off": "Aus",
+                    "external": "Extern"
                 }
             },
             "close_covers_after_sunset_delay": {
@@ -249,6 +255,12 @@
             }
         },
         "time": {
+            "automation_disabled_time_range_external_start": {
+                "name": "Blockierter Zeitraum: externe Startzeit"
+            },
+            "automation_disabled_time_range_external_end": {
+                "name": "Blockierter Zeitraum: externe Endzeit"
+            },
             "evening_closure_external_time": {
                 "name": "Abendschließen: externe Zeit"
             },
@@ -271,12 +283,6 @@
             },
             "sun_elevation_threshold": {
                 "name": "Minimale Sonnenhöhe"
-            },
-            "sun_elevation_max": {
-                "name": "Maximale Sonnenhöhe (Dachvorsprung)"
-            },
-            "sun_elevation_max_hysteresis": {
-                "name": "Dachvorsprung: Hysterese (Flattern-Schutz)"
             },
             "tilt_external_value_day": {
                 "name": "Lamellenneigung: externe Steuerung (Tag)"
@@ -428,6 +434,12 @@
                 "relative_to_sunrise": "Relativ zum Sonnenaufgang",
                 "fixed_time": "Feste Uhrzeit",
                 "external": "Extern (Zeit wird von einer Entität geliefert)"
+            }
+        },
+        "blocked_time_range_mode": {
+            "options": {
+                "fixed_time": "Absolute Uhrzeit",
+                "external": "Extern (Zeiten werden von Entitäten geliefert)"
             }
         }
     }

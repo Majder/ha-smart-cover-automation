@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any, cast
 from unittest.mock import MagicMock
 
+from homeassistant.components.cover import CoverEntityFeature
 from homeassistant.config_entries import ConfigFlowResult
 from homeassistant.data_entry_flow import FlowResultType
 
@@ -45,6 +46,36 @@ def _create_mock_entry(data: dict[str, Any] | None = None, options: dict[str, An
     else:
         mock_entry.options = {}
     return mock_entry
+
+
+def _rename_cover_state(
+    mock_hass_with_covers: MagicMock,
+    renamed_cover: str,
+    renamed_name: str,
+    *,
+    tilt_capable: set[str] | None = None,
+) -> None:
+    """Wrap the hass state lookup so one cover is renamed without changing its other attributes."""
+
+    original_side_effect = mock_hass_with_covers.states.get.side_effect
+
+    def renamed_get(entity_id: str) -> Any:
+        state = original_side_effect(entity_id) if callable(original_side_effect) else mock_hass_with_covers.states.get.return_value
+        if entity_id is None or not str(entity_id).startswith("cover."):
+            return state
+
+        wrapped_state = MagicMock()
+        wrapped_state.state = getattr(state, "state", "closed")
+        wrapped_state.attributes = dict(getattr(state, "attributes", {}))
+        if entity_id in (tilt_capable or set()):
+            wrapped_state.attributes["supported_features"] = int(CoverEntityFeature.SET_POSITION | CoverEntityFeature.SET_TILT_POSITION)
+        if entity_id == renamed_cover:
+            wrapped_state.attributes["friendly_name"] = renamed_name
+        else:
+            wrapped_state.attributes.setdefault("friendly_name", "Test Cover")
+        return wrapped_state
+
+    mock_hass_with_covers.states.get.side_effect = renamed_get
 
 
 class TestOptionsFlowStep1:
@@ -177,7 +208,8 @@ class TestOptionsFlowStep2:
         schema_keys = [str(key.schema) if hasattr(key, "schema") else str(key) for key in schema.keys()]
 
         assert const.STEP_2_SECTION_AZIMUTH in schema_keys
-        assert const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE in schema_keys
+        assert const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START in schema_keys
+        assert const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END in schema_keys
 
     async def test_step_2_uses_existing_azimuth_as_default(self, mock_hass_with_covers: MagicMock) -> None:
         """Test that existing azimuth values are used as defaults."""
@@ -219,8 +251,8 @@ class TestOptionsFlowStep2:
         assert result_dict["step_id"] == "3"
         assert f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_AZIMUTH}" in flow._config_data
 
-    async def test_step_2_saves_per_cover_sun_azimuth_window_override(self, mock_hass_with_covers: MagicMock) -> None:
-        """Step 2 should store per-cover integer sun azimuth enter/exit thresholds."""
+    async def test_step_2_saves_per_cover_sun_azimuth_tolerance_override(self, mock_hass_with_covers: MagicMock) -> None:
+        """Step 2 should store per-cover integer sun azimuth start/end overrides."""
 
         mock_entry = _create_mock_entry()
         flow = OptionsFlowHandler(mock_entry)
@@ -233,10 +265,11 @@ class TestOptionsFlowStep2:
             const.STEP_2_SECTION_AZIMUTH: {
                 f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_AZIMUTH}": 225.0,
             },
-            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: {
                 f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "25",
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": "35",
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}": "8",
+            },
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: {
+                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": "40",
             },
         }
 
@@ -246,8 +279,7 @@ class TestOptionsFlowStep2:
         assert result_dict["type"] == FlowResultType.FORM
         assert result_dict["step_id"] == "3"
         assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"] == 25
-        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"] == 35
-        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}"] == 8
+        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"] == 40
 
     async def test_step_2_assigns_default_azimuth_to_new_cover_when_section_is_omitted(self, mock_hass_with_covers: MagicMock) -> None:
         """New covers should still get a valid azimuth if the collapsed azimuth section is not submitted."""
@@ -265,9 +297,11 @@ class TestOptionsFlowStep2:
         }
 
         user_input = {
-            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
-                f"{MOCK_COVER_ENTITY_ID_2}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "25",
-                f"{MOCK_COVER_ENTITY_ID_2}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": "35",
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: {
+                "Test Cover 2": "25",
+            },
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: {
+                "Test Cover 2": "35",
             },
         }
 
@@ -281,8 +315,8 @@ class TestOptionsFlowStep2:
         assert flow._config_data[f"{MOCK_COVER_ENTITY_ID_2}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"] == 25
         assert flow._config_data[f"{MOCK_COVER_ENTITY_ID_2}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"] == 35
 
-    async def test_step_2_rejects_invalid_per_cover_sun_azimuth_window(self, mock_hass_with_covers: MagicMock) -> None:
-        """Step 2 should reject invalid non-integer sun azimuth threshold input."""
+    async def test_step_2_rejects_invalid_per_cover_sun_azimuth_tolerance(self, mock_hass_with_covers: MagicMock) -> None:
+        """Step 2 should reject invalid non-integer sun azimuth start/end input."""
 
         mock_entry = _create_mock_entry()
         flow = OptionsFlowHandler(mock_entry)
@@ -293,11 +327,10 @@ class TestOptionsFlowStep2:
 
         user_input = {
             const.STEP_2_SECTION_AZIMUTH: {
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_AZIMUTH}": 225,
+                "Test Cover": 225,
             },
-            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "75x",
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": "35",
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: {
+                "Test Cover": "75x",
             },
         }
 
@@ -308,44 +341,194 @@ class TestOptionsFlowStep2:
         assert result_dict["step_id"] == "2"
         assert result_dict["errors"] == {
             "base": const.ERROR_INVALID_INTEGER,
-            f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": const.ERROR_INVALID_INTEGER,
         }
 
         schema = result_dict["data_schema"].schema
-        section_key = next(key for key in schema if getattr(key, "schema", None) == const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE)
+        section_key = next(key for key in schema if getattr(key, "schema", None) == const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START)
         section_schema = schema[section_key].schema.schema
-        field_key = next(
-            key
-            for key in section_schema
-            if getattr(key, "schema", None) == f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"
-        )
-        assert field_key.description == {"suggested_value": "75x"}
+        field_key = next(key for key in section_schema if getattr(key, "schema", None) == "Test Cover")
+        assert field_key.description == {"name": "Test Cover", "suggested_value": "75x"}
 
-    def test_validate_step_2_input_skips_empty_tolerance_values(self) -> None:
-        """Empty tolerance values should be silently skipped, not produce errors.
+    async def test_step_2_rejects_invalid_per_cover_sun_azimuth_tolerance_end_with_base_error(
+        self, mock_hass_with_covers: MagicMock
+    ) -> None:
+        """Step 2 should use a base error and preserve invalid end input for correction."""
 
-        Covers the 'continue' branch (line 1057) in _validate_step_2_input when
-        _is_empty_value returns True for a field in the tolerance section.
-        """
+        mock_entry = _create_mock_entry()
+        flow = OptionsFlowHandler(mock_entry)
+        flow.hass = mock_hass_with_covers
+        flow._config_data = {
+            ConfKeys.COVERS.value: [MOCK_COVER_ENTITY_ID],
+        }
 
         user_input = {
-            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "",
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}": None,
+            const.STEP_2_SECTION_AZIMUTH: {
+                "Test Cover": 225,
+            },
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: {
+                "Test Cover": "85x",
             },
         }
 
-        errors = OptionsFlowHandler._validate_step_2_input(user_input)
+        result = await flow.async_step_2(user_input)
+        result_dict = _as_dict(result)
 
-        assert errors == {}
+        assert result_dict["type"] == FlowResultType.FORM
+        assert result_dict["step_id"] == "2"
+        assert result_dict["errors"] == {
+            "base": const.ERROR_INVALID_INTEGER,
+        }
 
-    def test_build_section_cover_settings_with_sun_azimuth_tolerance(self) -> None:
-        """Test _build_section_cover_settings handles per-cover sun azimuth thresholds."""
+        schema = result_dict["data_schema"].schema
+        section_key = next(key for key in schema if getattr(key, "schema", None) == const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END)
+        section_schema = schema[section_key].schema.schema
+        field_key = next(key for key in section_schema if getattr(key, "schema", None) == "Test Cover")
+        assert field_key.description == {"name": "Test Cover", "suggested_value": "85x"}
+
+    async def test_step_2_uses_rendered_label_map_when_cover_name_changes(self, mock_hass_with_covers: MagicMock) -> None:
+        """Step 2 should honor the labels that were rendered even if HA names change before submit."""
+
+        mock_entry = _create_mock_entry()
+        flow = OptionsFlowHandler(mock_entry)
+        flow.hass = mock_hass_with_covers
+        flow._config_data = {
+            ConfKeys.COVERS.value: [MOCK_COVER_ENTITY_ID],
+        }
+
+        await flow.async_step_2(None)
+
+        _rename_cover_state(mock_hass_with_covers, MOCK_COVER_ENTITY_ID, "Renamed Cover")
+
+        result = await flow.async_step_2(
+            {
+                const.STEP_2_SECTION_AZIMUTH: {
+                    "Test Cover": 225,
+                },
+                const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: {
+                    "Test Cover": "30",
+                },
+                const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: {
+                    "Test Cover": "45",
+                },
+            }
+        )
+
+        result_dict = _as_dict(result)
+
+        assert result_dict["type"] == FlowResultType.FORM
+        assert result_dict["step_id"] == "3"
+        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_AZIMUTH}"] == 225
+        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"] == 30
+        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"] == 45
+
+    async def test_step_3_uses_rendered_label_map_when_cover_name_changes(self, mock_hass_with_covers: MagicMock) -> None:
+        """Step 3 should keep using the labels that were rendered even if HA names change before submit."""
+
+        mock_entry = _create_mock_entry()
+        flow = OptionsFlowHandler(mock_entry)
+        flow.hass = mock_hass_with_covers
+        flow._config_data = {
+            ConfKeys.COVERS.value: [MOCK_COVER_ENTITY_ID],
+        }
+
+        await flow.async_step_3(None)
+
+        _rename_cover_state(mock_hass_with_covers, MOCK_COVER_ENTITY_ID, "Renamed Cover")
+
+        result = await flow.async_step_3(
+            {
+                const.STEP_3_SECTION_MIN_CLOSURE: {
+                    "Test Cover": "40",
+                },
+            }
+        )
+
+        result_dict = _as_dict(result)
+
+        assert result_dict["type"] == FlowResultType.FORM
+        assert result_dict["step_id"] == "4"
+        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_MIN_CLOSURE}"] == 40
+
+    async def test_step_4_uses_rendered_label_map_when_cover_name_changes(self, mock_hass_with_covers: MagicMock) -> None:
+        """Step 4 should keep using the labels that were rendered even if HA names change before submit."""
+
+        mock_entry = _create_mock_entry()
+        flow = OptionsFlowHandler(mock_entry)
+        flow.hass = mock_hass_with_covers
+        flow._config_data = {
+            ConfKeys.COVERS.value: [MOCK_COVER_ENTITY_ID],
+        }
+
+        _rename_cover_state(mock_hass_with_covers, MOCK_COVER_ENTITY_ID, "Test Cover", tilt_capable={MOCK_COVER_ENTITY_ID})
+        await flow.async_step_4(None)
+
+        _rename_cover_state(mock_hass_with_covers, MOCK_COVER_ENTITY_ID, "Renamed Cover", tilt_capable={MOCK_COVER_ENTITY_ID})
+
+        result = await flow.async_step_4(
+            {
+                const.STEP_4_SECTION_TILT_DAY: {
+                    "Test Cover": const.TiltMode.CLOSED.value,
+                },
+            }
+        )
+
+        result_dict = _as_dict(result)
+
+        assert result_dict["type"] == FlowResultType.FORM
+        assert result_dict["step_id"] == "5"
+        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_MODE_DAY}"] == const.TiltMode.CLOSED.value
+
+    async def test_step_5_uses_rendered_label_map_when_cover_name_changes(self, mock_hass_with_covers: MagicMock) -> None:
+        """Step 5 should keep using the labels that were rendered even if HA names change before submit."""
+
+        mock_entry = _create_mock_entry()
+        flow = OptionsFlowHandler(mock_entry)
+        flow.hass = mock_hass_with_covers
+        flow._config_data = {
+            ConfKeys.COVERS.value: [MOCK_COVER_ENTITY_ID],
+        }
+
+        await flow.async_step_5(None)
+
+        _rename_cover_state(mock_hass_with_covers, MOCK_COVER_ENTITY_ID, "Renamed Cover")
+
+        result = await flow.async_step_5(
+            {
+                const.STEP_5_SECTION_WINDOW_SENSORS: {
+                    "Test Cover": ["binary_sensor.window_1"],
+                },
+            }
+        )
+
+        result_dict = _as_dict(result)
+
+        assert result_dict["type"] == FlowResultType.FORM
+        assert result_dict["step_id"] == "6"
+        assert flow._config_data[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_WINDOW_SENSORS}"] == ["binary_sensor.window_1"]
+
+    def test_validate_step_2_input_ignores_cleared_per_cover_sun_azimuth_tolerance(self) -> None:
+        """Cleared per-cover start/end input should be treated as empty, not invalid."""
 
         user_input = {
-            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE: {
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}": "20",
-                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}": "6",
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: {
+                "Test Cover": "",
+            },
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: {
+                "Test Cover": "",
+            },
+        }
+
+        assert OptionsFlowHandler._validate_step_2_input(user_input) == {}
+
+    def test_build_section_cover_settings_with_sun_azimuth_tolerance(self, mock_hass_with_covers: MagicMock) -> None:
+        """Test _build_section_cover_settings handles per-cover sun azimuth start/end overrides."""
+
+        user_input = {
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START: {
+                "Test Cover": "20",
+            },
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END: {
+                "Test Cover": "35",
             },
         }
 
@@ -354,23 +537,28 @@ class TestOptionsFlowStep2:
 
         result = OptionsFlowHandler._build_section_cover_settings(
             user_input,
-            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE,
+            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_START,
             const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START,
             covers,
             current_settings,
+            mock_hass_with_covers,
+            {"Test Cover": f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"},
+        )
+
+        result.update(
+            OptionsFlowHandler._build_section_cover_settings(
+                user_input,
+                const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE_END,
+                const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END,
+                covers,
+                current_settings,
+                mock_hass_with_covers,
+                {"Test Cover": f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"},
+            )
         )
 
         assert result[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_START}"] == 20
-
-        result_hysteresis = OptionsFlowHandler._build_section_cover_settings(
-            user_input,
-            const.STEP_2_SECTION_SUN_AZIMUTH_TOLERANCE,
-            const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS,
-            covers,
-            current_settings,
-        )
-
-        assert result_hysteresis[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_ELEVATION_MAX_HYSTERESIS}"] == 6
+        assert result[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_SUN_AZIMUTH_TOLERANCE_END}"] == 35
 
 
 class TestOptionsFlowNavigation:
@@ -1015,6 +1203,35 @@ class TestOptionsFlowHelperMethods:
         assert OptionsFlowHandler._to_int(42) == 42
         assert OptionsFlowHandler._to_int("100") == 100
 
+    def test_translate_cover_field_keys_preserves_unknown_labels(self) -> None:
+        """Unknown labels should be preserved unchanged during translation."""
+
+        translated = OptionsFlowHandler._translate_cover_field_keys(
+            {"Test Cover": 10, "Unknown Cover": 20},
+            {"Test Cover": f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_AZIMUTH}"},
+        )
+
+        assert translated == {
+            f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_AZIMUTH}": 10,
+            "Unknown Cover": 20,
+        }
+
+    def test_get_cover_field_map_rebuilds_from_hass_when_no_rendered_map_exists(self, mock_hass_with_covers: MagicMock) -> None:
+        """Direct-submit fallback should rebuild the field map from current HA state."""
+
+        flow = OptionsFlowHandler(_create_mock_entry())
+        flow.hass = mock_hass_with_covers
+
+        field_map = flow._get_cover_field_map(
+            const.STEP_2_SECTION_AZIMUTH,
+            [MOCK_COVER_ENTITY_ID],
+            const.COVER_SFX_AZIMUTH,
+        )
+
+        assert field_map == {
+            "Test Cover": f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_AZIMUTH}",
+        }
+
     def test_build_section_cover_settings_with_missing_key(self) -> None:
         """Test _build_section_cover_settings when key is not in user input."""
         from custom_components.smart_cover_automation.config_flow import OptionsFlowHandler
@@ -1086,6 +1303,62 @@ class TestOptionsFlowHelperMethods:
         # Cleared value should be stored as None (changed from "open")
         assert result[f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_MODE_NIGHT}"] is None
 
+    def test_build_section_cover_settings_returns_empty_for_invalid_non_mapping_section(self) -> None:
+        """A non-mapping section payload should be ignored safely."""
+
+        user_input = {
+            const.STEP_4_SECTION_TILT_NIGHT: 123,
+        }
+
+        result = OptionsFlowHandler._build_section_cover_settings(
+            user_input,
+            const.STEP_4_SECTION_TILT_NIGHT,
+            const.COVER_SFX_TILT_MODE_NIGHT,
+            [MOCK_COVER_ENTITY_ID],
+            {f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_MODE_NIGHT}": "open"},
+        )
+
+        assert result == {}
+
+    def test_build_section_cover_settings_ignores_unchanged_window_sensors(self) -> None:
+        """Unchanged window sensor lists should not be written back."""
+
+        current_value = ["binary_sensor.window_1"]
+        user_input = {
+            const.STEP_5_SECTION_WINDOW_SENSORS: {
+                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_WINDOW_SENSORS}": list(current_value),
+            },
+        }
+
+        result = OptionsFlowHandler._build_section_cover_settings(
+            user_input,
+            const.STEP_5_SECTION_WINDOW_SENSORS,
+            const.COVER_SFX_WINDOW_SENSORS,
+            [MOCK_COVER_ENTITY_ID],
+            {f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_WINDOW_SENSORS}": current_value},
+        )
+
+        assert result == {}
+
+    def test_build_section_cover_settings_ignores_unchanged_numeric_value(self) -> None:
+        """Unchanged numeric per-cover values should not be written back."""
+
+        user_input = {
+            const.STEP_3_SECTION_MIN_CLOSURE: {
+                f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_MIN_CLOSURE}": "40",
+            },
+        }
+
+        result = OptionsFlowHandler._build_section_cover_settings(
+            user_input,
+            const.STEP_3_SECTION_MIN_CLOSURE,
+            const.COVER_SFX_MIN_CLOSURE,
+            [MOCK_COVER_ENTITY_ID],
+            {f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_MIN_CLOSURE}": 40},
+        )
+
+        assert result == {}
+
     #
     # test_cleanup_external_tilt_value_keys
     #
@@ -1110,42 +1383,27 @@ class TestOptionsFlowHelperMethods:
         assert f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}" not in merged
         assert f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_NIGHT}" in merged
 
-    def test_cleanup_external_tilt_value_keys_keeps_day_value_when_tilt_mode_is_external(self) -> None:
-        """Global external tilt day value must be preserved when tilt mode day is still EXTERNAL.
-
-        Covers the false branch of 'if TILT_MODE_DAY != EXTERNAL' (branch 1096->1099).
-        """
+    def test_cleanup_external_tilt_value_keys_removes_orphaned_per_cover_values(self) -> None:
+        """Per-cover external tilt values for removed covers should be deleted."""
 
         merged = {
             ConfKeys.TILT_MODE_DAY.value: const.TiltMode.EXTERNAL,
             ConfKeys.TILT_MODE_NIGHT.value: const.TiltMode.EXTERNAL,
             const.NUMBER_KEY_TILT_EXTERNAL_VALUE_DAY: 40,
             const.NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT: 15,
+            f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_MODE_DAY}": const.TiltMode.EXTERNAL,
+            f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}": 70,
+            f"{MOCK_COVER_ENTITY_ID_2}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}": 80,
+            f"{MOCK_COVER_ENTITY_ID_2}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_NIGHT}": 20,
         }
 
         OptionsFlowHandler._cleanup_external_tilt_value_keys(merged, [MOCK_COVER_ENTITY_ID])
 
         assert const.NUMBER_KEY_TILT_EXTERNAL_VALUE_DAY in merged
         assert const.NUMBER_KEY_TILT_EXTERNAL_VALUE_NIGHT in merged
-
-    def test_cleanup_external_tilt_value_keys_removes_stale_cover_value_keys(self) -> None:
-        """Tilt external value keys for removed covers must be purged from merged options.
-
-        Covers line 1119: merged.pop(key, None) when cover_entity not in valid_covers.
-        """
-
-        stale_cover = "cover.old_bedroom"
-        merged = {
-            ConfKeys.TILT_MODE_DAY.value: "open",
-            ConfKeys.TILT_MODE_NIGHT.value: "open",
-            f"{stale_cover}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}": 55,
-            f"{stale_cover}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_NIGHT}": 30,
-        }
-
-        OptionsFlowHandler._cleanup_external_tilt_value_keys(merged, [MOCK_COVER_ENTITY_ID])
-
-        assert f"{stale_cover}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}" not in merged
-        assert f"{stale_cover}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_NIGHT}" not in merged
+        assert f"{MOCK_COVER_ENTITY_ID}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}" in merged
+        assert f"{MOCK_COVER_ENTITY_ID_2}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_DAY}" not in merged
+        assert f"{MOCK_COVER_ENTITY_ID_2}_{const.COVER_SFX_TILT_EXTERNAL_VALUE_NIGHT}" not in merged
 
     def test_cleanup_external_morning_opening_keys_keeps_value_in_external_mode(self) -> None:
         """External morning opening time should be preserved while external mode is active."""
@@ -1194,6 +1452,34 @@ class TestOptionsFlowHelperMethods:
         OptionsFlowHandler._cleanup_external_evening_closure_keys(merged)
 
         assert const.TIME_KEY_EVENING_CLOSURE_EXTERNAL_TIME not in merged
+
+    def test_cleanup_external_blocked_time_range_keys_keep_values_in_external_mode(self) -> None:
+        """External blocked-time boundaries should be preserved while external mode is active."""
+
+        merged = {
+            ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_MODE.value: const.BlockedTimeRangeMode.EXTERNAL,
+            const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_START: "22:15:00",
+            const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_END: "06:30:00",
+        }
+
+        OptionsFlowHandler._cleanup_external_blocked_time_range_keys(merged)
+
+        assert const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_START in merged
+        assert const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_END in merged
+
+    def test_cleanup_external_blocked_time_range_keys_remove_values_when_mode_changes(self) -> None:
+        """External blocked-time boundaries should be removed once mode is no longer external."""
+
+        merged = {
+            ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_MODE.value: const.BlockedTimeRangeMode.FIXED_TIME,
+            const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_START: "22:15:00",
+            const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_END: "06:30:00",
+        }
+
+        OptionsFlowHandler._cleanup_external_blocked_time_range_keys(merged)
+
+        assert const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_START not in merged
+        assert const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_END not in merged
 
     async def test_finalize_and_save_removes_stale_evening_external_time_when_mode_changes(
         self,
@@ -1488,6 +1774,7 @@ class TestOptionsFlowStep6CloseAfterSunset:
         section_schema = schema.schema[section_key].schema.schema
         section_defaults = {key.schema: key.default() for key in section_schema if hasattr(key, "schema") and hasattr(key, "default")}
 
+        assert section_defaults[ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_MODE.value] == const.BlockedTimeRangeMode.FIXED_TIME
         assert section_defaults[ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_PRE_CLOSE_ENABLED.value] is True
 
     async def test_step_6_saves_blocked_time_range_pre_close_toggle(self, mock_hass_with_covers: MagicMock) -> None:
@@ -1517,6 +1804,7 @@ class TestOptionsFlowStep6CloseAfterSunset:
             {
                 const.STEP_6_SECTION_TIME_RANGE: {
                     ConfKeys.AUTOMATION_DISABLED_TIME_RANGE.value: True,
+                    ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_MODE.value: const.BlockedTimeRangeMode.FIXED_TIME,
                     ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_START.value: "22:00:00",
                     ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_END.value: "06:00:00",
                     ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_PRE_CLOSE_ENABLED.value: False,
@@ -1525,8 +1813,37 @@ class TestOptionsFlowStep6CloseAfterSunset:
         )
         result_dict = _as_dict(result)
 
-        assert result_dict["type"] == FlowResultType.CREATE_ENTRY
+        assert result_dict["data"][ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_MODE.value] == const.BlockedTimeRangeMode.FIXED_TIME
         assert result_dict["data"][ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_PRE_CLOSE_ENABLED.value] is False
+
+    async def test_finalize_and_save_removes_stale_blocked_time_external_values_when_mode_changes(
+        self,
+        mock_hass_with_covers: MagicMock,
+    ) -> None:
+        """Finalizing the flow should drop stale external blocked-time values after mode changes."""
+
+        existing_data = {
+            ConfKeys.WEATHER_ENTITY_ID.value: MOCK_WEATHER_ENTITY_ID,
+            ConfKeys.COVERS.value: [MOCK_COVER_ENTITY_ID],
+            ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_MODE.value: const.BlockedTimeRangeMode.EXTERNAL,
+            const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_START: "22:15:00",
+            const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_END: "06:30:00",
+        }
+        mock_entry = _create_mock_entry(data=existing_data)
+        flow = OptionsFlowHandler(mock_entry)
+        flow.hass = mock_hass_with_covers
+        flow._config_data = {
+            ConfKeys.COVERS.value: [MOCK_COVER_ENTITY_ID],
+            ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_MODE.value: const.BlockedTimeRangeMode.FIXED_TIME,
+        }
+
+        result = flow._finalize_and_save()
+        result_dict = _as_dict(result)
+
+        assert result_dict["type"] == FlowResultType.CREATE_ENTRY
+        assert result_dict["data"][ConfKeys.AUTOMATION_DISABLED_TIME_RANGE_MODE.value] == const.BlockedTimeRangeMode.FIXED_TIME
+        assert const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_START not in result_dict["data"]
+        assert const.TIME_KEY_AUTOMATION_DISABLED_TIME_RANGE_EXTERNAL_END not in result_dict["data"]
 
     #
     # test_step_6_saves_close_after_sunset_settings
